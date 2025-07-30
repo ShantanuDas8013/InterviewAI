@@ -149,4 +149,39 @@ class DatabaseService {
       return false;
     }
   }
+
+  /// Get all active job roles
+  Future<List<Map<String, dynamic>>> getJobRoles({bool activeOnly = true}) async {
+    try {
+      var query = _supabase.from('job_roles').select();
+      
+      if (activeOnly) {
+        query = query.eq('is_active', true);
+      }
+      
+      final response = await query.order('title');
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('Error fetching job roles: $e');
+      return [];
+    }
+  }
+
+  /// Get user's active resume
+  Future<Map<String, dynamic>?> getUserResume(String userId) async {
+    try {
+      final response = await _supabase
+          .from('resumes')
+          .select()
+          .eq('user_id', userId)
+          .eq('is_active', true)
+          .order('upload_date', ascending: false)
+          .maybeSingle();
+
+      return response;
+    } catch (e) {
+      debugPrint('Error fetching user resume: $e');
+      return null;
+    }
+  }
 }

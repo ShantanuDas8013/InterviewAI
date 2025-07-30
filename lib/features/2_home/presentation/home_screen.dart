@@ -339,12 +339,7 @@ class _HomeScreenState extends State<HomeScreen> {
               subtitle: 'Begin your practice session',
               color: Colors.purpleAccent,
               onTap: () {
-                // TODO: Navigate to interview setup
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Interview feature coming soon!'),
-                  ),
-                );
+                Navigator.pushNamed(context, '/interview-setup');
               },
             ),
             _buildFeatureCard(

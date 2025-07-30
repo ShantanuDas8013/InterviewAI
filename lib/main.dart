@@ -8,6 +8,7 @@ import 'features/1_auth/presentation/screens/registration_screen.dart';
 import 'features/2_home/presentation/home_screen.dart';
 import 'features/3_profile/presentation/edit_profile_screen.dart';
 import 'features/4_resume_upload/presentation/screens/upload_resume_screen.dart';
+import 'features/5_interview/presentation/screens/interview_setup_screen.dart';
 import 'core/constants/theme.dart';
 
 void main() async {
@@ -60,6 +61,7 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const HomeScreen(),
         '/edit-profile': (context) => const EditProfileScreen(),
         '/upload-resume': (context) => const UploadResumeScreen(),
+        '/interview-setup': (context) => const InterviewSetupScreen(),
       },
     );
   }
