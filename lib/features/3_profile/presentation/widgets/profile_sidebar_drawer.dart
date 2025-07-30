@@ -300,6 +300,16 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
                 },
               ),
               _buildMenuItem(
+                icon: Icons.upload_file,
+                title: 'Upload Resume',
+                subtitle: 'Manage your resume',
+                color: Colors.cyanAccent,
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/upload-resume');
+                },
+              ),
+              _buildMenuItem(
                 icon: Icons.settings_outlined,
                 title: 'Settings',
                 subtitle: 'App preferences',
