@@ -201,6 +201,7 @@ class _UploadResumeScreenState extends State<UploadResumeScreen>
               builder: (context) => AnalysisResultScreen(
                 analysisData: analysis,
                 resumeFileName: _existingResume!['file_name'],
+                resumeId: resumeId,
               ),
             ),
           );
@@ -223,12 +224,14 @@ class _UploadResumeScreenState extends State<UploadResumeScreen>
   /// Navigate to analysis result screen to view existing analysis
   void _viewAnalysisResult() {
     if (_analysisData != null && _existingResume != null) {
+      final resumeId = _existingResume!['id'];
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => AnalysisResultScreen(
             analysisData: _analysisData!,
             resumeFileName: _existingResume!['file_name'],
+            resumeId: resumeId,
           ),
         ),
       );

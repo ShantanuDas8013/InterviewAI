@@ -7,6 +7,12 @@ class AppTheme {
   static const Color accentColor = Color(0xFF7C4DFF); // Deep Purple Accent
   static const Color secondaryAccentColor = Color(0xFF536DFE); // Indigo Accent
 
+  // Status Colors
+  static const Color successColor = Color(0xFF4CAF50); // Green
+  static const Color errorColor = Color(0xFFF44336); // Red
+  static const Color warningColor = Color(0xFFFF9800); // Orange
+  static const Color infoColor = Color(0xFF2196F3); // Blue
+
   // Gradient Colors
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topCenter,

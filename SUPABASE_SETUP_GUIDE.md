@@ -151,6 +151,7 @@ CREATE TABLE public.interview_sessions (
   overall_score DECIMAL(3,2) CHECK (overall_score >= 0 AND overall_score <= 10),
   technical_score DECIMAL(3,2) CHECK (technical_score >= 0 AND technical_score <= 10),
   communication_score DECIMAL(3,2) CHECK (communication_score >= 0 AND communication_score <= 10),
+  problem_solving_score DECIMAL(3,2) CHECK (problem_solving_score >= 0 AND problem_solving_score <= 10),
   confidence_score DECIMAL(3,2) CHECK (confidence_score >= 0 AND confidence_score <= 10),
   ai_feedback TEXT,
   strengths TEXT[],
@@ -191,7 +192,29 @@ CREATE TABLE public.interview_responses (
 );
 ```
 
-#### Step 2.8: Create User Analytics Table
+#### Step 2.8: Create Interview Results Table
+
+```sql
+CREATE TABLE public.interview_results (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  interview_session_id UUID REFERENCES public.interview_sessions(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES public.user_profiles(id) ON DELETE CASCADE,
+  job_role_id UUID REFERENCES public.job_roles(id) ON DELETE SET NULL,
+  job_role_title VARCHAR(100) NOT NULL,
+  overall_score DECIMAL(3,2) CHECK (overall_score >= 0 AND overall_score <= 10),
+  technical_score DECIMAL(3,2) CHECK (technical_score >= 0 AND technical_score <= 10),
+  communication_score DECIMAL(3,2) CHECK (communication_score >= 0 AND communication_score <= 10),
+  problem_solving_score DECIMAL(3,2) CHECK (problem_solving_score >= 0 AND problem_solving_score <= 10),
+  confidence_score DECIMAL(3,2) CHECK (confidence_score >= 0 AND confidence_score <= 10),
+  strengths_analysis TEXT,
+  areas_for_improvement TEXT,
+  ai_summary TEXT,
+  completed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+#### Step 2.9: Create User Analytics Table
 
 ```sql
 CREATE TABLE public.user_analytics (
@@ -214,7 +237,7 @@ CREATE TABLE public.user_analytics (
 );
 ```
 
-#### Step 2.9: Create Interview Feedback Table
+#### Step 2.10: Create Interview Feedback Table
 
 ```sql
 CREATE TABLE public.interview_feedback (
@@ -234,7 +257,7 @@ CREATE TABLE public.interview_feedback (
 );
 ```
 
-#### Step 2.10: Create App Settings Table
+#### Step 2.11: Create App Settings Table
 
 ```sql
 CREATE TABLE public.app_settings (
@@ -249,7 +272,7 @@ CREATE TABLE public.app_settings (
 );
 ```
 
-#### Step 2.11: Create Gemini API Logs Table
+#### Step 2.12: Create Gemini API Logs Table
 
 ```sql
 CREATE TABLE public.gemini_api_logs (
@@ -331,6 +354,7 @@ ALTER TABLE public.resumes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.resume_analysis ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.interview_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.interview_responses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.interview_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_analytics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.interview_feedback ENABLE ROW LEVEL SECURITY;
 ```
@@ -374,6 +398,12 @@ CREATE POLICY "Users can update their own interview sessions" ON public.intervie
 CREATE POLICY "Users can view their own interview responses" ON public.interview_responses
   FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert their own interview responses" ON public.interview_responses
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Interview Results Policies
+CREATE POLICY "Users can view their own interview results" ON public.interview_results
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own interview results" ON public.interview_results
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- User Analytics Policies
@@ -426,6 +456,75 @@ INSERT INTO public.app_settings (setting_key, setting_value, description) VALUES
 ('supported_audio_formats', '["wav", "mp3", "m4a"]', 'Supported audio formats for interview responses');
 ```
 
+## Database Migration (For Existing Databases)
+
+If you already have the database set up but are missing some columns or tables, run these migrations:
+
+```sql
+-- Add missing problem_solving_score column to interview_sessions table
+ALTER TABLE public.interview_sessions
+ADD COLUMN IF NOT EXISTS problem_solving_score DECIMAL(3,2)
+CHECK (problem_solving_score >= 0 AND problem_solving_score <= 10);
+
+-- Create interview_results table if it doesn't exist
+CREATE TABLE IF NOT EXISTS public.interview_results (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  interview_session_id UUID REFERENCES public.interview_sessions(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES public.user_profiles(id) ON DELETE CASCADE,
+  job_role_id UUID REFERENCES public.job_roles(id) ON DELETE SET NULL,
+  job_role_title VARCHAR(100) NOT NULL,
+  overall_score DECIMAL(3,2) CHECK (overall_score >= 0 AND overall_score <= 10),
+  technical_score DECIMAL(3,2) CHECK (technical_score >= 0 AND technical_score <= 10),
+  communication_score DECIMAL(3,2) CHECK (communication_score >= 0 AND communication_score <= 10),
+  problem_solving_score DECIMAL(3,2) CHECK (problem_solving_score >= 0 AND problem_solving_score <= 10),
+  confidence_score DECIMAL(3,2) CHECK (confidence_score >= 0 AND confidence_score <= 10),
+  strengths_analysis TEXT,
+  areas_for_improvement TEXT,
+  ai_summary TEXT,
+  completed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Add missing problem_solving_score column to interview_results table (if it exists)
+ALTER TABLE public.interview_results
+ADD COLUMN IF NOT EXISTS problem_solving_score DECIMAL(3,2)
+CHECK (problem_solving_score >= 0 AND problem_solving_score <= 10);
+
+-- Enable RLS for interview_results if not already enabled
+ALTER TABLE public.interview_results ENABLE ROW LEVEL SECURITY;
+
+-- Add RLS policies for interview_results if they don't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'interview_results' AND policyname = 'Users can view their own interview results'
+  ) THEN
+    CREATE POLICY "Users can view their own interview results" ON public.interview_results
+      FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'interview_results' AND policyname = 'Users can insert their own interview results'
+  ) THEN
+    CREATE POLICY "Users can insert their own interview results" ON public.interview_results
+      FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+-- Update existing records to have default problem_solving_score
+UPDATE public.interview_sessions
+SET problem_solving_score = 0.0
+WHERE problem_solving_score IS NULL;
+
+UPDATE public.interview_results
+SET problem_solving_score = 0.0
+WHERE problem_solving_score IS NULL;
+```
+
+```
+
 ## Notes:
 
 - Execute each step in order
@@ -439,3 +538,4 @@ INSERT INTO public.app_settings (setting_key, setting_value, description) VALUES
 2. Test the authentication flow
 3. Implement resume upload functionality
 4. Integrate with Gemini API for analysis
+```

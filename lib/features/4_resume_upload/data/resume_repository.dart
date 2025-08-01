@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/services/storage_service.dart';
 
 class ResumeRepository {
   static final ResumeRepository _instance = ResumeRepository._internal();
@@ -8,6 +9,7 @@ class ResumeRepository {
   ResumeRepository._internal();
 
   final SupabaseClient _supabase = Supabase.instance.client;
+  final StorageService _storageService = StorageService();
 
   /// Get user's active resume
   Future<Map<String, dynamic>?> getUserResume(String userId) async {
@@ -41,11 +43,20 @@ class ResumeRepository {
           .eq('user_id', userId)
           .eq('is_active', true);
 
-      // Upload file to storage
+      // Upload file to storage using StorageService
       final storagePath = '$userId/$fileName';
       final file = File(filePath);
 
-      await _supabase.storage.from('resumes').upload(storagePath, file);
+      // Use the core StorageService to upload the file
+      final fileUrl = await _storageService.uploadFileFromPath(
+        bucketName: 'resumes',
+        filePath: filePath,
+        destinationPath: storagePath,
+      );
+
+      if (fileUrl == null) {
+        throw Exception('Failed to upload resume file');
+      }
 
       // Create database record
       final resumeData = {
@@ -74,8 +85,18 @@ class ResumeRepository {
   /// Delete resume from storage and database
   Future<void> deleteResume(String resumeId, String filePath) async {
     try {
-      // Delete from storage
-      await _supabase.storage.from('resumes').remove([filePath]);
+      // Get the file URL
+      final fileUrl = _supabase.storage.from('resumes').getPublicUrl(filePath);
+
+      // Delete from storage using StorageService
+      final deleted = await _storageService.deleteFile(
+        bucketName: 'resumes',
+        fileUrl: fileUrl,
+      );
+
+      if (!deleted) {
+        debugPrint('Warning: Failed to delete resume file from storage');
+      }
 
       // Delete from database
       await _supabase.from('resumes').delete().eq('id', resumeId);
@@ -268,9 +289,18 @@ class ResumeRepository {
   /// Get resume file download URL
   Future<String?> getResumeDownloadUrl(String filePath) async {
     try {
+      if (filePath.isEmpty) {
+        throw Exception('File path cannot be empty');
+      }
+
+      // Create a signed URL with 5 minutes expiry for secure access
       final response = await _supabase.storage
           .from('resumes')
-          .createSignedUrl(filePath, 60); // 60 seconds expiry
+          .createSignedUrl(filePath, 300); // 5 minutes expiry
+
+      if (response.isEmpty) {
+        throw Exception('Generated download URL is empty');
+      }
 
       return response;
     } catch (e) {

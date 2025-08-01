@@ -50,7 +50,7 @@ dependencies:
 
   # Voice & Audio
   flutter_sound: ^9.3.0 # For recording audio from the microphone
-  # speech_to_text: ^6.6.1 # For converting spoken audio to text
+  speech_to_text: ^6.6.2 # For converting spoken audio to text
 
   # Routing
   go_router: ^14.1.0 # For elegant and powerful navigation and routing
@@ -61,6 +61,10 @@ dependencies:
 
   # UI & Icons
   cupertino_icons: ^1.0.6
+  uuid: ^4.5.1
+
+  flutter_tts: ^4.2.3
+  percent_indicator: ^4.2.5
 
   # The following adds the Cupertino Icons font to your application.
 

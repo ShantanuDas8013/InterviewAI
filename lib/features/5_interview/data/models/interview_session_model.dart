@@ -16,6 +16,7 @@ class InterviewSessionModel {
   final double? overallScore;
   final double? technicalScore;
   final double? communicationScore;
+  final double? problemSolvingScore;
   final double? confidenceScore;
   final DateTime createdAt;
 
@@ -37,6 +38,7 @@ class InterviewSessionModel {
     this.overallScore,
     this.technicalScore,
     this.communicationScore,
+    this.problemSolvingScore,
     this.confidenceScore,
     required this.createdAt,
   });
@@ -66,6 +68,7 @@ class InterviewSessionModel {
       overallScore: json['overall_score']?.toDouble(),
       technicalScore: json['technical_score']?.toDouble(),
       communicationScore: json['communication_score']?.toDouble(),
+      problemSolvingScore: json['problem_solving_score']?.toDouble(),
       confidenceScore: json['confidence_score']?.toDouble(),
       createdAt: DateTime.parse(json['created_at']),
     );
@@ -90,6 +93,7 @@ class InterviewSessionModel {
       'overall_score': overallScore,
       'technical_score': technicalScore,
       'communication_score': communicationScore,
+      'problem_solving_score': problemSolvingScore,
       'confidence_score': confidenceScore,
       'created_at': createdAt.toIso8601String(),
     };

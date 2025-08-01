@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/theme.dart';
 import '../../../../core/services/pdf_service.dart';
+import '../../services/resume_service.dart';
 
 class AnalysisResultScreen extends StatefulWidget {
-  final Map<String, dynamic> analysisData;
-  final String resumeFileName;
+  final Map<String, dynamic>? analysisData;
+  final String? resumeFileName;
+  final String? resumeId;
 
   const AnalysisResultScreen({
     super.key,
-    required this.analysisData,
-    required this.resumeFileName,
-  });
+    this.analysisData,
+    this.resumeFileName,
+    this.resumeId,
+  }) : assert(
+          (analysisData != null && resumeFileName != null) || resumeId != null,
+          'Either provide both analysisData and resumeFileName, or provide resumeId',
+        );
 
   @override
   State<AnalysisResultScreen> createState() => _AnalysisResultScreenState();
@@ -24,11 +31,67 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _progressAnimation;
+  
+  final ResumeService _resumeService = ResumeService();
+  final SupabaseClient _supabase = Supabase.instance.client;
+  
+  Map<String, dynamic>? _analysisData;
+  String? _resumeFileName;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
+    _loadAnalysisData();
+  }
+
+  /// Load analysis data from database if needed
+  Future<void> _loadAnalysisData() async {
+    // If analysis data is already provided, use it
+    if (widget.analysisData != null && widget.resumeFileName != null) {
+      setState(() {
+        _analysisData = widget.analysisData;
+        _resumeFileName = widget.resumeFileName;
+      });
+      return;
+    }
+    
+    // Otherwise, load from database using resumeId
+    if (widget.resumeId != null) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+      
+      try {
+        // Get resume analysis from database
+        final analysis = await _resumeService.getResumeAnalysis(widget.resumeId!);
+        
+        // Get resume details to get the file name
+        final user = _supabase.auth.currentUser;
+        if (user != null) {
+          final resume = await _resumeService.getCurrentResume();
+          
+          setState(() {
+            _analysisData = analysis;
+            _resumeFileName = resume?['file_name'] ?? 'Resume';
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _errorMessage = 'User not authenticated';
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        setState(() {
+          _errorMessage = 'Error loading analysis data: $e';
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _initializeAnimations() {
@@ -76,6 +139,16 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
   }
 
   Future<void> _downloadAnalysisReport() async {
+    if (_analysisData == null || _resumeFileName == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Analysis data not available'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
     try {
       // Show loading dialog
       showDialog(
@@ -104,8 +177,8 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
 
       // Generate PDF
       final filePath = await PdfService.generateAnalysisReport(
-        analysisData: widget.analysisData,
-        resumeFileName: widget.resumeFileName,
+        analysisData: _analysisData!,
+        resumeFileName: _resumeFileName!,
       );
 
       // Close loading dialog
@@ -237,36 +310,165 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
       ),
       body: Container(
         decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
-        child: SafeArea(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(AppTheme.paddingM),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 20),
-                    _buildHeaderSection(),
-                    const SizedBox(height: 24),
-                    _buildOverallScore(),
-                    const SizedBox(height: 24),
-                    _buildSkillsSection(),
-                    const SizedBox(height: 24),
-                    _buildExperienceSection(),
-                    const SizedBox(height: 24),
-                    _buildStrengthsSection(),
-                    const SizedBox(height: 24),
-                    _buildImprovementsSection(),
-                    const SizedBox(height: 24),
-                    _buildInterviewTipsSection(),
-                    const SizedBox(height: 24),
-                    _buildJobRecommendationsSection(),
-                    const SizedBox(height: 32),
-                  ],
-                ),
+        child: _isLoading
+            ? _buildLoadingView()
+            : _errorMessage != null
+                ? _buildErrorView()
+                : _analysisData == null
+                    ? _buildNoDataView()
+                    : _buildAnalysisContent(),
+      ),
+    );
+  }
+
+  Widget _buildLoadingView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentColor),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Loading analysis data...',
+            style: TextStyle(
+              color: AppTheme.textPrimaryColor,
+              fontSize: AppTheme.fontSizeRegular,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              color: Colors.red[300],
+              size: 60,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Error Loading Analysis',
+              style: TextStyle(
+                color: AppTheme.textPrimaryColor,
+                fontSize: AppTheme.fontSizeLarge,
+                fontWeight: FontWeight.bold,
               ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              _errorMessage ?? 'An unknown error occurred',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.textSecondaryColor,
+                fontSize: AppTheme.fontSizeRegular,
+              ),
+            ),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _isLoading = true;
+                  _errorMessage = null;
+                });
+                _loadAnalysisData();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.accentColor,
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+              ),
+              child: const Text('Try Again'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoDataView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off,
+              color: Colors.amber[300],
+              size: 60,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'No Analysis Data Found',
+              style: TextStyle(
+                color: AppTheme.textPrimaryColor,
+                fontSize: AppTheme.fontSizeLarge,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'We couldn\'t find any analysis data for this resume.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.textSecondaryColor,
+                fontSize: AppTheme.fontSizeRegular,
+              ),
+            ),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.accentColor,
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+              ),
+              child: const Text('Go Back'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnalysisContent() {
+    return SafeArea(
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SlideTransition(
+          position: _slideAnimation,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppTheme.paddingM),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 20),
+                _buildHeaderSection(),
+                const SizedBox(height: 24),
+                _buildOverallScore(),
+                const SizedBox(height: 24),
+                _buildSkillsSection(),
+                const SizedBox(height: 24),
+                _buildExperienceSection(),
+                const SizedBox(height: 24),
+                _buildStrengthsSection(),
+                const SizedBox(height: 24),
+                _buildImprovementsSection(),
+                const SizedBox(height: 24),
+                _buildInterviewTipsSection(),
+                const SizedBox(height: 24),
+                _buildJobRecommendationsSection(),
+                const SizedBox(height: 32),
+              ],
             ),
           ),
         ),
@@ -330,7 +532,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      widget.resumeFileName,
+                      _resumeFileName ?? 'Resume',
                       style: TextStyle(
                         fontSize: AppTheme.fontSizeSmall,
                         color: AppTheme.textSecondaryColor,
@@ -348,7 +550,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
   }
 
   Widget _buildOverallScore() {
-    final rawScore = (widget.analysisData['overallScore'] ?? 85.0).toDouble();
+    final rawScore = (_analysisData?['overallScore'] ?? 85.0).toDouble();
     // Convert from 0-100 scale to 0-10 scale
     final score = rawScore > 10 ? rawScore / 10.0 : rawScore;
     final scoreColor = _getScoreColor(score);
@@ -494,7 +696,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
   }
 
   Widget _buildSkillsSection() {
-    final skills = widget.analysisData['skills'] ?? {};
+    final skills = _analysisData?['skills'] ?? {};
     final technicalSkills = List<String>.from(skills['technical'] ?? []);
     final softSkills = List<String>.from(skills['soft'] ?? []);
     final domainSkills = List<String>.from(skills['domain'] ?? []);
@@ -520,7 +722,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
   }
 
   Widget _buildExperienceSection() {
-    final experience = widget.analysisData['experience'] ?? {};
+    final experience = _analysisData?['experience'] ?? {};
     final summary = experience['summary'] ?? 'No experience data available';
     final achievements = List<String>.from(experience['keyAchievements'] ?? []);
     final yearsOfExperience = experience['yearsOfExperience'] ?? 0;
@@ -600,7 +802,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
   }
 
   Widget _buildStrengthsSection() {
-    final strengths = List<String>.from(widget.analysisData['strengths'] ?? []);
+    final strengths = List<String>.from(_analysisData?['strengths'] ?? []);
 
     return _buildSection(
       title: 'Key Strengths',
@@ -634,7 +836,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
 
   Widget _buildImprovementsSection() {
     final improvements = List<String>.from(
-      widget.analysisData['improvements'] ?? [],
+      _analysisData?['improvements'] ?? [],
     );
 
     return _buildSection(
@@ -668,7 +870,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
   }
 
   Widget _buildInterviewTipsSection() {
-    final tips = List<String>.from(widget.analysisData['interviewTips'] ?? []);
+    final tips = List<String>.from(_analysisData?['interviewTips'] ?? []);
 
     return _buildSection(
       title: 'Interview Preparation Tips',
@@ -711,7 +913,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
 
   Widget _buildJobRecommendationsSection() {
     final recommendations = List<String>.from(
-      widget.analysisData['jobRecommendations'] ?? [],
+      _analysisData?['jobRecommendations'] ?? [],
     );
 
     return _buildSection(

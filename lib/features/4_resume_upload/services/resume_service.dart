@@ -200,8 +200,15 @@ class ResumeService {
   }
 
   /// Get download URL for resume
-  String getResumeDownloadUrl(String filePath) {
-    return _supabase.storage.from('resumes').getPublicUrl(filePath);
+  Future<String?> getResumeDownloadUrl(String filePath) async {
+    try {
+      // Use the repository method to get a signed URL with proper error handling
+      return await _resumeRepository.getResumeDownloadUrl(filePath);
+    } catch (e) {
+      debugPrint('Error getting resume download URL: $e');
+      // Fallback to public URL if signed URL fails
+      return _supabase.storage.from('resumes').getPublicUrl(filePath);
+    }
   }
 
   /// Analyze resume using Gemini AI

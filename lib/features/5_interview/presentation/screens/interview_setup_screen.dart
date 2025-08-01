@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../../../../core/constants/theme.dart';
 import '../../../../core/services/auth_service.dart';
 import '../../../../core/services/database_service.dart';
 import '../../../2_home/presentation/widgets/job_role_selector.dart';
+import '../../data/models/job_role_model.dart';
+import 'interview_screen.dart';
 
 class InterviewSetupScreen extends StatefulWidget {
   const InterviewSetupScreen({super.key});
@@ -43,21 +45,14 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
       duration: const Duration(milliseconds: 800),
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
+          CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+        );
 
     _animationController.forward();
   }
@@ -84,7 +79,7 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
       if (userProfile == null) {
         throw Exception('User profile not found');
       }
-      
+
       // Load user's resume information
       final userResume = await _databaseService.getUserResume(userId);
 
@@ -107,22 +102,24 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
       _jobRoles = []; // Clear existing job roles while loading
       _selectedJobRole = null; // Reset selected role
     });
-    
+
     try {
       // Fetch job roles from database using the DatabaseService
       final jobRolesData = await _databaseService.getJobRoles();
-      
+
       if (jobRolesData.isEmpty) {
         throw Exception('No job roles found in database');
       }
-      
-      final roles = jobRolesData.map((item) => item['title'].toString()).toList();
-      
+
+      final roles = jobRolesData
+          .map((item) => item['title'].toString())
+          .toList();
+
       setState(() {
         _jobRoles = roles;
         _isLoading = false;
       });
-      
+
       debugPrint('Loaded ${roles.length} job roles successfully');
     } catch (e) {
       debugPrint('Error loading job roles: $e');
@@ -142,7 +139,7 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
         ];
         _isLoading = false;
       });
-      
+
       debugPrint('Using fallback job roles list');
     }
   }
@@ -153,7 +150,7 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
     });
   }
 
-  void _startInterview() {
+  void _startInterview() async {
     if (_selectedJobRole == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -164,15 +161,117 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
       return;
     }
 
-    // TODO: Navigate to interview screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Starting interview for $_selectedJobRole'),
-        backgroundColor: Colors.greenAccent,
-      ),
-    );
+    final userId = _authService.currentUser?.id;
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User authentication error. Please log in again.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    // Show loading indicator
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Find the job role from the database instead of creating a new one
+      final jobRolesData = await _databaseService.getJobRoles();
+      final selectedJobRoleData = jobRolesData.firstWhere(
+        (role) => role['title'] == _selectedJobRole,
+        orElse: () => throw Exception('Selected job role not found in database'),
+      );
+      
+      // Create a job role model from the database data
+      final jobRoleModel = JobRoleModel.fromJson(selectedJobRoleData);
+
+      // Navigate to the interview screen
+      if (!mounted) return;
+
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => InterviewScreen(
+            jobRole: jobRoleModel,
+            resumeId: _userResume?['id'],
+            difficultyLevel: 'medium',
+            totalQuestions: 10,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error starting interview: ${e.toString()}'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
-  
+
+  List<String> _getSkillsForJobRole(String jobRole) {
+    final skillsMap = {
+      'Frontend Developer': ['HTML', 'CSS', 'JavaScript', 'React', 'Vue.js'],
+      'Backend Developer': ['Node.js', 'Python', 'Java', 'SQL', 'REST APIs'],
+      'Full Stack Developer': ['JavaScript', 'React', 'Node.js', 'SQL', 'Git'],
+      'Data Scientist': [
+        'Python',
+        'R',
+        'SQL',
+        'Machine Learning',
+        'Statistics',
+      ],
+      'Product Manager': [
+        'Product Strategy',
+        'Analytics',
+        'Communication',
+        'Leadership',
+      ],
+      'Digital Marketing Specialist': [
+        'SEO',
+        'SEM',
+        'Social Media',
+        'Analytics',
+        'Content Marketing',
+      ],
+      'Mobile Developer': [
+        'Flutter',
+        'React Native',
+        'Swift',
+        'Kotlin',
+        'Mobile UI/UX',
+      ],
+      'DevOps Engineer': ['Docker', 'Kubernetes', 'AWS', 'CI/CD', 'Linux'],
+      'UI/UX Designer': [
+        'Figma',
+        'Adobe XD',
+        'User Research',
+        'Prototyping',
+        'Design Systems',
+      ],
+      'Software Engineer': [
+        'Programming',
+        'Algorithms',
+        'System Design',
+        'Testing',
+        'Git',
+      ],
+    };
+
+    return skillsMap[jobRole] ??
+        ['Communication', 'Problem Solving', 'Teamwork', 'Technical Skills'];
+  }
+
   // Helper method to format date for display
   String _formatDate(String? dateString) {
     if (dateString == null) return '';
@@ -213,8 +312,13 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
-                ? Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)))
-                : _buildContent(),
+            ? Center(
+                child: Text(
+                  _errorMessage!,
+                  style: const TextStyle(color: Colors.red),
+                ),
+              )
+            : _buildContent(),
       ),
     );
   }
@@ -290,11 +394,7 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.person,
-                color: AppTheme.accentColor,
-                size: 20,
-              ),
+              const Icon(Icons.person, color: AppTheme.accentColor, size: 20),
               const SizedBox(width: 8),
               const Text(
                 'Your Details',
@@ -359,7 +459,9 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
           ),
           _buildUserDetailRow(
             'Resume',
-            _userResume != null ? '${_userResume?['file_name']} (Uploaded ${_formatDate(_userResume?['upload_date'])})' : 'No resume uploaded',
+            _userResume != null
+                ? '${_userResume?['file_name']} (Uploaded ${_formatDate(_userResume?['upload_date'])})'
+                : 'No resume uploaded',
             Icons.description,
           ),
         ],
@@ -373,11 +475,7 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            color: AppTheme.textSecondaryColor,
-            size: 16,
-          ),
+          Icon(icon, color: AppTheme.textSecondaryColor, size: 16),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -431,11 +529,7 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
           const SizedBox(height: AppTheme.paddingM),
           Row(
             children: [
-              Icon(
-                Icons.info_outline,
-                color: Colors.amber[700],
-                size: 24,
-              ),
+              Icon(Icons.info_outline, color: Colors.amber[700], size: 24),
               const SizedBox(width: 12),
               const Expanded(
                 child: Text(
@@ -458,7 +552,9 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppTheme.buttonBorderRadius),
+                  borderRadius: BorderRadius.circular(
+                    AppTheme.buttonBorderRadius,
+                  ),
                 ),
               ),
               child: const Text('Retry Loading Job Roles'),
