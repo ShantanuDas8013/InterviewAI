@@ -1,71 +1,63 @@
+### **Prompt for Gemini CLI**
 
-# GEMINI.md - AI Voice Interview App
+You are an expert Flutter developer specializing in API integrations. Your task is to refactor an existing Flutter application to use the AssemblyAI API for highly accurate speech-to-text transcription, replacing the current on-device `speech_to_text` package.
 
-## Project Overview
+The primary goal is to improve transcription quality to get more accurate interview feedback from the Gemini evaluation service.
 
-This is a Flutter application designed to help users practice and improve their interview skills. It uses AI and voice technologies to simulate real-world interview experiences.
+### **Project Requirements**
 
-**Key Features:**
+1.  **Remove Old Dependency**: The `speech_to_text` package should be removed from `pubspec.yaml`.
+2.  **Add New Dependencies**: Add the `http` package for making API calls and a suitable audio recording package like `record` or `flutter_sound`.
+3.  **Configuration**: The AssemblyAI API key should be managed securely, ideally loaded from a configuration file or environment variable, not hardcoded.
+4.  **New Service**: Create a new Dart service class named `AssemblyAiService` to encapsulate all interactions with the AssemblyAI API.
+5.  **UI Integration**: Update the interview screen to handle audio recording and integrate with the new `AssemblyAiService`.
 
-*   **AI-Powered Interviews:** Conducts mock interviews using natural language processing and voice recognition.
-*   **Voice Interaction:** Allows users to answer questions verbally.
-*   **Resume Analysis:** Users can upload their resume for AI-driven feedback.
-*   **Performance Feedback:** Provides detailed feedback on interview answers.
-*   **User Authentication:** Secure sign-up and login.
+---
 
-**Core Technologies:**
+### **Implementation Details**
 
-*   **Frontend:** Flutter
-*   **Backend & Database:** Supabase (Authentication, Database, Storage)
-*   **AI & Machine Learning:** Google Gemini API
-*   **State Management:** BLoC
-*   **Routing:** go_router
-*   **Audio Processing:** flutter_sound, speech_to_text
+#### **1. `AssemblyAiService` Class**
 
-## Building and Running
+This service must implement the complete three-step transcription process required by AssemblyAI:
 
-### Prerequisites
+- **Step A: Upload Audio File**
 
-*   Flutter SDK
-*   Dart SDK
-*   Android Studio or Xcode
-*   A Supabase project
+  - Create a method that accepts a local audio file path.
+  - It should make a `POST` request to the AssemblyAI endpoint: `https://api.assemblyai.com/v2/upload`.
+  - The request header must include the `Authorization` token (your API key).
+  - This method should return the secure `upload_url` from the response.
 
-### Setup & Execution
+- **Step B: Submit for Transcription**
 
-1.  **Clone the repository:**
-    ```sh
-    git clone https://github.com/ShantanuDas8013/InterviewAI.git
-    cd ai_voice_interview_app
-    ```
+  - Create a method that takes the `upload_url`.
+  - It should make a `POST` request to `https://api.assemblyai.com/v2/transcript`.
+  - The request body must be a JSON object containing the `audio_url`.
+  - This method should return the `id` of the transcription job.
 
-2.  **Install dependencies:**
-    ```sh
-    flutter pub get
-    ```
+- **Step C: Poll for Results**
+  - Create a method that takes the transcription `id`.
+  - This method should make periodic `GET` requests to `https://api.assemblyai.com/v2/transcript/{id}`.
+  - It must continue polling until the `status` field in the response is `completed` or `error`.
+  - Implement a reasonable delay between polling attempts (e.g., 2-3 seconds).
+  - If the status is `completed`, it should extract and return the final `text` from the response.
+  - It must handle potential errors by checking for `status: 'error'`.
 
-3.  **Configure Supabase:**
-    *   Follow the instructions in `SUPABASE_SETUP_GUIDE.md`.
-    *   Create a `.env` file in the root directory and add your Supabase credentials and Gemini API key. You can use `.env.example` as a template.
+#### **2. Interview Screen UI and Logic**
 
-4.  **Run the app:**
-    ```sh
-    flutter run
-    ```
+- When the user presses the microphone button, the app should start recording audio to a file.
+- When the user stops speaking, the recording should be saved.
+- The file path of the saved recording should be passed to the `AssemblyAiService`.
+- A loading indicator should be displayed to the user while the transcription is in progress.
+- Once the final transcript is returned from the service, it should be passed to the existing Gemini API service for evaluation.
 
-### Testing
+---
 
-To run tests, execute the following command:
+### **Your Task**
 
-```sh
-flutter test
-```
+Please provide the complete, production-ready Dart code for the refactored application. Your response should include:
 
-## Development Conventions
+1.  The full code for the new `AssemblyAiService` class, complete with error handling and comments.
+2.  The modified code for the interview screen widget, showing the integration of the audio recorder and the new service.
+3.  An example of how to correctly call the main transcription method in the UI.
 
-*   **State Management:** The project uses the **BLoC (Business Logic Component)** pattern for state management, as indicated by the `flutter_bloc` dependency. New features should follow this pattern.
-*   **Directory Structure:** The `lib` directory is organized by features (e.g., `lib/features/1_auth`, `lib/features/2_home`). Core, shared components are located in `lib/core`.
-*   **Routing:** Navigation is handled by the `go_router` package. Route definitions can be found within the feature directories.
-*   **Dependencies:** Manage dependencies in the `pubspec.yaml` file. After making changes, run `flutter pub get`.
-*   **Code Style:** The project follows the linting rules defined in `analysis_options.yaml`.
-*   **Environment Variables:** API keys and other secrets are managed through a `.env` file. Do not commit this file to version control.
+Ensure the code is clean, efficient, and follows Flutter best practices.

@@ -10,6 +10,7 @@ import 'features/3_profile/presentation/edit_profile_screen.dart';
 import 'features/4_resume_upload/presentation/screens/upload_resume_screen.dart';
 import 'features/5_interview/presentation/screens/interview_setup_screen.dart';
 import 'interview_demo_screen.dart';
+import 'question_generation_demo_screen.dart';
 import 'core/constants/theme.dart';
 
 void main() async {
@@ -64,6 +65,7 @@ class MyApp extends StatelessWidget {
         '/upload-resume': (context) => const UploadResumeScreen(),
         '/interview-setup': (context) => const InterviewSetupScreen(),
         '/interview-demo': (context) => const InterviewDemoScreen(),
+        '/question-demo': (context) => const QuestionGenerationDemoScreen(),
       },
     );
   }

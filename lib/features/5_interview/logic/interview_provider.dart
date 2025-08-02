@@ -6,9 +6,11 @@ import '../data/models/interview_question_model.dart';
 import '../data/models/interview_result_model.dart';
 import '../data/models/interview_session_model.dart';
 import '../data/models/job_role_model.dart';
-import '../services/speech_to_text_service.dart';
+import '../services/assembly_ai_service.dart';
+import '../services/audio_recording_service.dart';
 import '../services/text_to_speech_service.dart';
 import '../services/database_service.dart';
+import '../services/question_generation_service.dart';
 
 enum InterviewState {
   idle,
@@ -22,9 +24,12 @@ enum InterviewState {
 
 class InterviewProvider extends ChangeNotifier {
   // Services
-  final SpeechToTextService _speechService = SpeechToTextService();
+  final AssemblyAiService _transcriptionService = AssemblyAiService();
+  final AudioRecordingService _audioService = AudioRecordingService();
   final TextToSpeechService _ttsService = TextToSpeechService();
   final DatabaseService _databaseService = DatabaseService();
+  final QuestionGenerationService _questionGenerationService =
+      QuestionGenerationService();
 
   // State
   InterviewState _state = InterviewState.idle;
@@ -75,7 +80,8 @@ class InterviewProvider extends ChangeNotifier {
     try {
       _setState(InterviewState.preparing);
 
-      await _speechService.initialize();
+      await _transcriptionService.initialize();
+      await _audioService.initialize();
       await _ttsService.initialize();
 
       _isInitialized = true;
@@ -135,140 +141,195 @@ class InterviewProvider extends ChangeNotifier {
     }
   }
 
-  // Generate interview questions
+  // Generate interview questions using AI
   Future<void> _generateQuestions(
     JobRoleModel jobRole,
     int totalQuestions,
     String difficultyLevel,
   ) async {
     try {
-      // For now, create hardcoded questions based on job role
-      // In a real implementation, you would use AI to generate questions
-      _questions = _createHardcodedQuestions(jobRole, totalQuestions);
+      debugPrint(
+        'Generating questions for ${jobRole.title} - ${totalQuestions} questions at $difficultyLevel level',
+      );
 
+      // Use the AI-powered question generation service
+      _questions = await _questionGenerationService.generateQuestionsForRole(
+        jobRole: jobRole,
+        difficultyLevel: difficultyLevel,
+        questionCount: totalQuestions,
+        experienceLevel: difficultyLevel == 'easy'
+            ? 'Junior'
+            : difficultyLevel == 'hard'
+            ? 'Senior'
+            : 'Mid-level',
+        useCache:
+            true, // Use cached questions when available for better performance
+      );
+
+      debugPrint('Successfully generated ${_questions.length} questions');
+
+      if (_questions.isEmpty) {
+        throw Exception('No questions could be generated for this role');
+      }
+
+      _currentQuestionIndex = 0;
       notifyListeners();
     } catch (e) {
-      throw Exception('Failed to generate questions: $e');
+      debugPrint('Error generating questions: $e');
+
+      // Fallback to basic questions if AI generation fails
+      _questions = _generateBasicFallbackQuestions(
+        jobRole,
+        totalQuestions,
+        difficultyLevel,
+      );
+      _currentQuestionIndex = 0;
+      notifyListeners();
+
+      if (_questions.isEmpty) {
+        throw Exception('Failed to generate interview questions: $e');
+      }
     }
   }
 
-  List<InterviewQuestionModel> _createHardcodedQuestions(
+  // Fallback questions when AI generation completely fails
+  List<InterviewQuestionModel> _generateBasicFallbackQuestions(
     JobRoleModel jobRole,
     int totalQuestions,
+    String difficultyLevel,
   ) {
-    final baseQuestions = <Map<String, dynamic>>[
-      {
-        'question_text': 'Can you tell me about yourself and your background?',
-        'question_type': 'general',
-        'difficulty_level': 'easy',
-        'expected_keywords': ['experience', 'skills', 'background'],
-        'sample_answer':
-            'I am a ${jobRole.title} with experience in ${jobRole.requiredSkills.take(3).join(', ')}. I have worked on various projects that required...',
-      },
-      {
-        'question_text':
-            'What interests you about this ${jobRole.title} position?',
-        'question_type': 'behavioral',
-        'difficulty_level': 'easy',
-        'expected_keywords': ['interest', 'motivation', 'skills'],
-        'sample_answer':
-            'I am interested in this position because it combines my skills in ${jobRole.requiredSkills.first} with my passion for...',
-      },
-      {
-        'question_text':
-            'Can you explain your experience with ${jobRole.requiredSkills.isNotEmpty ? jobRole.requiredSkills.first : 'relevant technologies'}?',
-        'question_type': 'technical',
-        'difficulty_level': 'medium',
-        'expected_keywords': jobRole.requiredSkills,
-        'sample_answer':
-            'I have worked extensively with ${jobRole.requiredSkills.isNotEmpty ? jobRole.requiredSkills.first : 'various technologies'} for...',
-      },
-      {
-        'question_text':
-            'Describe a challenging project you\'ve worked on and how you overcame difficulties.',
-        'question_type': 'behavioral',
-        'difficulty_level': 'medium',
-        'expected_keywords': ['challenge', 'project', 'solution', 'overcome'],
-        'sample_answer':
-            'I worked on a project where we faced technical challenges with... I overcame this by...',
-      },
-      {
-        'question_text':
-            'How do you stay updated with the latest trends in ${jobRole.category}?',
-        'question_type': 'general',
-        'difficulty_level': 'easy',
-        'expected_keywords': ['learning', 'trends', 'update', 'technology'],
-        'sample_answer':
-            'I stay updated by reading industry blogs, attending conferences, taking online courses...',
-      },
-      {
-        'question_text':
-            'What are your strengths and how do they relate to this role?',
-        'question_type': 'behavioral',
-        'difficulty_level': 'easy',
-        'expected_keywords': ['strengths', 'skills', 'role'],
-        'sample_answer':
-            'My key strengths include attention to detail, problem-solving abilities, and strong communication skills which are essential for...',
-      },
-      {
-        'question_text': 'Where do you see yourself in 5 years?',
-        'question_type': 'general',
-        'difficulty_level': 'easy',
-        'expected_keywords': ['career', 'goals', 'growth'],
-        'sample_answer':
-            'In 5 years, I see myself as a senior professional who has contributed significantly to...',
-      },
-      {
-        'question_text':
-            'How would you approach a problem involving ${jobRole.requiredSkills.length > 1 ? jobRole.requiredSkills[1] : jobRole.requiredSkills.first}?',
-        'question_type': 'technical',
-        'difficulty_level': 'medium',
-        'expected_keywords': jobRole.requiredSkills,
-        'sample_answer':
-            'I would start by analyzing the requirements, then design a solution using best practices...',
-      },
-      {
-        'question_text':
-            'Describe your experience working in a team environment.',
-        'question_type': 'behavioral',
-        'difficulty_level': 'easy',
-        'expected_keywords': ['team', 'collaboration', 'communication'],
-        'sample_answer':
-            'I have extensive experience working in cross-functional teams where I contributed by...',
-      },
-      {
-        'question_text':
-            'Do you have any questions for us about the role or company?',
-        'question_type': 'general',
-        'difficulty_level': 'easy',
-        'expected_keywords': ['questions', 'role', 'company'],
-        'sample_answer':
-            'Yes, I would like to know more about the team structure, growth opportunities, and the biggest challenges facing the team.',
-      },
-    ];
-
-    // Select questions based on total questions requested
-    final selectedQuestions = baseQuestions.take(totalQuestions).toList();
-
-    return selectedQuestions.asMap().entries.map((entry) {
-      final index = entry.key;
-      final question = entry.value;
-
-      return InterviewQuestionModel(
-        id: 'q_${const Uuid().v4()}',
+    const uuid = Uuid();
+    final List<InterviewQuestionModel> fallbackQuestions = [
+      InterviewQuestionModel(
+        id: uuid.v4(),
         jobRoleId: jobRole.id,
-        questionText: question['question_text'],
-        questionType: question['question_type'],
-        difficultyLevel: question['difficulty_level'],
-        expectedAnswerKeywords: List<String>.from(
-          question['expected_keywords'] ?? [],
-        ),
-        sampleAnswer: question['sample_answer'],
+        questionText: 'Tell me about yourself and your background.',
+        questionType: 'general',
+        difficultyLevel: difficultyLevel,
+        expectedAnswerKeywords: [
+          'background',
+          'experience',
+          'skills',
+          'passion',
+        ],
+        timeLimitSeconds: 120,
         isActive: true,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
+      ),
+      InterviewQuestionModel(
+        id: uuid.v4(),
+        jobRoleId: jobRole.id,
+        questionText:
+            'Why are you interested in this ${jobRole.title} position?',
+        questionType: 'general',
+        difficultyLevel: difficultyLevel,
+        expectedAnswerKeywords: [
+          'motivation',
+          'interest',
+          'career goals',
+          'company',
+        ],
+        timeLimitSeconds: 120,
+        isActive: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+      InterviewQuestionModel(
+        id: uuid.v4(),
+        jobRoleId: jobRole.id,
+        questionText:
+            'Describe a challenging situation you faced and how you handled it.',
+        questionType: 'behavioral',
+        difficultyLevel: difficultyLevel,
+        expectedAnswerKeywords: [
+          'challenge',
+          'problem-solving',
+          'solution',
+          'result',
+        ],
+        timeLimitSeconds: 180,
+        isActive: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+      InterviewQuestionModel(
+        id: uuid.v4(),
+        jobRoleId: jobRole.id,
+        questionText:
+            'What are your strengths and how do they relate to this role?',
+        questionType: 'general',
+        difficultyLevel: difficultyLevel,
+        expectedAnswerKeywords: [
+          'strengths',
+          'skills',
+          'relevance',
+          'examples',
+        ],
+        timeLimitSeconds: 120,
+        isActive: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+      InterviewQuestionModel(
+        id: uuid.v4(),
+        jobRoleId: jobRole.id,
+        questionText: 'Where do you see yourself in 5 years?',
+        questionType: 'general',
+        difficultyLevel: difficultyLevel,
+        expectedAnswerKeywords: ['career goals', 'growth', 'ambition', 'plan'],
+        timeLimitSeconds: 120,
+        isActive: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    ];
+
+    return fallbackQuestions.take(totalQuestions).toList();
+  }
+
+  // Regenerate questions with fresh AI content
+  Future<void> regenerateQuestions({bool clearCache = true}) async {
+    if (_jobRole == null) {
+      _setError('No job role selected');
+      return;
+    }
+
+    try {
+      _setState(InterviewState.preparing);
+
+      if (clearCache) {
+        // Clear cached questions for this role to get fresh AI-generated questions
+        await _questionGenerationService.clearCachedQuestions(_jobRole!.id);
+      }
+
+      // Generate new questions
+      await _generateQuestions(
+        _jobRole!,
+        _currentSession?.totalQuestions ?? 10,
+        _currentSession?.difficultyLevel ?? 'medium',
       );
-    }).toList();
+
+      // Reset to first question
+      _currentQuestionIndex = 0;
+
+      _setState(InterviewState.idle);
+      debugPrint('Questions regenerated successfully');
+    } catch (e) {
+      _setError('Failed to regenerate questions: $e');
+    }
+  }
+
+  // Get statistics about generated questions
+  Future<Map<String, dynamic>> getQuestionStatistics() async {
+    if (_jobRole == null) return {};
+
+    try {
+      return await _questionGenerationService.getQuestionStats(_jobRole!.id);
+    } catch (e) {
+      debugPrint('Error getting question statistics: $e');
+      return {};
+    }
   }
 
   // Speak welcome message
@@ -328,17 +389,11 @@ class InterviewProvider extends ChangeNotifier {
       _currentTranscript = '';
       _finalTranscript = '';
 
-      await _speechService.startListening(
-        onResult: (text, isFinal) {
-          if (isFinal) {
-            _finalTranscript = text;
-            _currentTranscript = '';
-          } else {
-            _currentTranscript = text;
-          }
-          notifyListeners();
-        },
-      );
+      // Start audio recording for AssemblyAI transcription
+      final recordingPath = await _audioService.startRecording();
+      if (recordingPath == null) {
+        throw Exception('Failed to start audio recording');
+      }
     } catch (e) {
       _setError('Failed to start listening: $e');
     }
@@ -349,18 +404,28 @@ class InterviewProvider extends ChangeNotifier {
     if (_state != InterviewState.listening) return;
 
     try {
-      await _speechService.stopListening();
+      _setState(InterviewState.processing);
 
-      final answer = _finalTranscript.isNotEmpty
-          ? _finalTranscript
-          : _currentTranscript;
-      if (answer.isNotEmpty) {
-        await _processAnswer(answer);
+      // Stop audio recording and get the recorded file path
+      final recordingPath = await _audioService.stopRecording();
+
+      if (recordingPath != null) {
+        // Transcribe the audio using AssemblyAI
+        final transcribedText = await _transcriptionService.transcribeAudio(
+          recordingPath,
+        );
+        _finalTranscript = transcribedText;
+
+        if (_finalTranscript.isNotEmpty) {
+          await _processAnswer(_finalTranscript);
+        } else {
+          await _handleNoAnswer();
+        }
       } else {
         await _handleNoAnswer();
       }
     } catch (e) {
-      _setError('Failed to stop listening: $e');
+      _setError('Failed to process audio: $e');
     }
   }
 
@@ -480,7 +545,7 @@ class InterviewProvider extends ChangeNotifier {
     }).toList();
 
     return InterviewResultModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: const Uuid().v4(),
       interviewSessionId: _currentSession!.id,
       userId: _currentSession!.userId,
       jobRoleId: _jobRole!.id,
@@ -506,7 +571,7 @@ class InterviewProvider extends ChangeNotifier {
   Future<void> endInterview() async {
     try {
       if (_state == InterviewState.listening) {
-        await _speechService.stopListening();
+        await _audioService.cancelRecording();
       }
       if (_state == InterviewState.speaking) {
         await _ttsService.stop();
@@ -553,7 +618,8 @@ class InterviewProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _speechService.dispose();
+    _audioService.dispose();
+    _transcriptionService.dispose();
     _ttsService.dispose();
     super.dispose();
   }

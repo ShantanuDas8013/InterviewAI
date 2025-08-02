@@ -122,6 +122,41 @@ class DatabaseService {
     }
   }
 
+  // Save a generated question to the database
+  Future<String> saveQuestion({
+    required String jobRoleId,
+    required String questionText,
+    required String questionType,
+    required String difficultyLevel,
+    List<String>? expectedAnswerKeywords,
+    String? sampleAnswer,
+    Map<String, dynamic>? evaluationCriteria,
+    int? timeLimitSeconds,
+  }) async {
+    try {
+      final response = await _supabase
+          .from('interview_questions')
+          .insert({
+            'job_role_id': jobRoleId,
+            'question_text': questionText,
+            'question_type': questionType,
+            'difficulty_level': difficultyLevel,
+            'expected_answer_keywords': expectedAnswerKeywords,
+            'sample_answer': sampleAnswer,
+            'evaluation_criteria': evaluationCriteria,
+            'time_limit_seconds': timeLimitSeconds ?? 120,
+            'is_active': true,
+          })
+          .select('id')
+          .single();
+
+      return response['id'] as String;
+    } catch (e) {
+      debugPrint('Error saving question: $e');
+      rethrow;
+    }
+  }
+
   // Save a user's response to a question
   Future<void> saveResponse({
     required String sessionId,

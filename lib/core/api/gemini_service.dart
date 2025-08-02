@@ -513,6 +513,222 @@ RESPONSE FORMAT: Return ONLY the JSON object above with your analysis. Do not in
     return cleanedText;
   }
 
+  /// Generate professional interview questions for a specific job role
+  Future<List<Map<String, dynamic>>> generateInterviewQuestions({
+    required String jobTitle,
+    required String jobCategory,
+    required List<String> requiredSkills,
+    required String difficultyLevel,
+    required int questionCount,
+    String? jobDescription,
+    String? industry,
+    String? experienceLevel,
+  }) async {
+    const int maxRetries = 3;
+    const Duration baseDelay = Duration(seconds: 2);
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        debugPrint(
+          'Interview questions generation attempt $attempt of $maxRetries',
+        );
+        await initialize();
+
+        final questionsResult = await _performQuestionGeneration(
+          jobTitle: jobTitle,
+          jobCategory: jobCategory,
+          requiredSkills: requiredSkills,
+          difficultyLevel: difficultyLevel,
+          questionCount: questionCount,
+          jobDescription: jobDescription,
+          industry: industry,
+          experienceLevel: experienceLevel,
+        );
+
+        debugPrint(
+          'Interview questions generated successfully on attempt $attempt',
+        );
+        return questionsResult;
+      } catch (e) {
+        debugPrint('Attempt $attempt failed: $e');
+
+        if (_isRetryableError(e) && attempt < maxRetries) {
+          final delay = Duration(
+            milliseconds: baseDelay.inMilliseconds * (1 << (attempt - 1)),
+          );
+
+          debugPrint(
+            'Retrying in ${delay.inSeconds} seconds... (attempt ${attempt + 1}/$maxRetries)',
+          );
+          await Future.delayed(delay);
+          continue;
+        }
+
+        if (attempt == maxRetries) {
+          debugPrint('All retry attempts exhausted. Throwing error.');
+          rethrow;
+        }
+      }
+    }
+
+    throw Exception('Interview questions generation failed after all retries');
+  }
+
+  /// Perform the actual question generation
+  Future<List<Map<String, dynamic>>> _performQuestionGeneration({
+    required String jobTitle,
+    required String jobCategory,
+    required List<String> requiredSkills,
+    required String difficultyLevel,
+    required int questionCount,
+    String? jobDescription,
+    String? industry,
+    String? experienceLevel,
+  }) async {
+    final prompt = _buildQuestionGenerationPrompt(
+      jobTitle: jobTitle,
+      jobCategory: jobCategory,
+      requiredSkills: requiredSkills,
+      difficultyLevel: difficultyLevel,
+      questionCount: questionCount,
+      jobDescription: jobDescription,
+      industry: industry,
+      experienceLevel: experienceLevel,
+    );
+
+    final content = [Content.text(prompt)];
+    final response = await _model.generateContent(content);
+    final responseText = response.text ?? '';
+
+    debugPrint('Gemini Questions Raw Response: $responseText');
+
+    try {
+      // Clean the response text to extract valid JSON
+      String cleanJsonString = responseText.trim();
+
+      // Remove markdown code blocks if present
+      if (cleanJsonString.startsWith('```json')) {
+        cleanJsonString = cleanJsonString.replaceFirst('```json', '');
+      }
+      if (cleanJsonString.startsWith('```')) {
+        cleanJsonString = cleanJsonString.replaceFirst('```', '');
+      }
+      if (cleanJsonString.endsWith('```')) {
+        cleanJsonString = cleanJsonString.substring(
+          0,
+          cleanJsonString.length - 3,
+        );
+      }
+
+      // Find JSON boundaries
+      final jsonStart = cleanJsonString.indexOf('[');
+      final jsonEnd = cleanJsonString.lastIndexOf(']') + 1;
+
+      if (jsonStart != -1 && jsonEnd > jsonStart) {
+        cleanJsonString = cleanJsonString.substring(jsonStart, jsonEnd);
+      }
+
+      debugPrint('Cleaned JSON String for questions: $cleanJsonString');
+
+      // Parse the JSON
+      final parsedJson = jsonDecode(cleanJsonString) as List<dynamic>;
+
+      // Validate and convert to proper format
+      final questions = parsedJson
+          .map((q) => _validateQuestionData(q as Map<String, dynamic>))
+          .toList();
+
+      debugPrint('Successfully parsed ${questions.length} interview questions');
+      return questions;
+    } catch (parseError) {
+      debugPrint('Error parsing Gemini questions JSON response: $parseError');
+      debugPrint('Raw response for debugging: $responseText');
+      throw Exception('Failed to parse Gemini questions response: $parseError');
+    }
+  }
+
+  /// Build the question generation prompt
+  String _buildQuestionGenerationPrompt({
+    required String jobTitle,
+    required String jobCategory,
+    required List<String> requiredSkills,
+    required String difficultyLevel,
+    required int questionCount,
+    String? jobDescription,
+    String? industry,
+    String? experienceLevel,
+  }) {
+    return '''
+You are an expert HR professional and technical interviewer with 15+ years of experience in conducting interviews across various industries. Generate $questionCount professional, real-world interview questions for the following job role.
+
+JOB ROLE DETAILS:
+- Position: $jobTitle
+- Category: $jobCategory
+- Industry: ${industry ?? 'Technology'}
+- Experience Level: ${experienceLevel ?? 'Mid-level'}
+- Difficulty Level: $difficultyLevel
+- Required Skills: ${requiredSkills.join(', ')}
+${jobDescription != null ? '- Job Description: $jobDescription' : ''}
+
+QUESTION REQUIREMENTS:
+1. Generate a balanced mix of question types:
+   - Technical questions (40%): Role-specific technical knowledge and problem-solving
+   - Behavioral questions (30%): STAR method scenarios, leadership, teamwork
+   - Situational questions (20%): Hypothetical scenarios and decision-making
+   - General questions (10%): Motivation, career goals, company fit
+
+2. Difficulty Distribution based on level:
+   - Easy: Basic concepts, fundamental knowledge
+   - Medium: Practical application, moderate complexity
+   - Hard: Advanced scenarios, complex problem-solving
+
+3. Each question should:
+   - Be realistic and commonly asked in actual interviews
+   - Test relevant skills and competencies for the role
+   - Be appropriate for the specified experience level
+   - Include context when necessary
+   - Be specific to the job category and industry
+
+4. Include evaluation criteria and expected answer keywords for each question
+
+IMPORTANT: Return ONLY a valid JSON array with no additional text or markdown formatting.
+
+Expected JSON format:
+[
+  {
+    "questionText": "Describe a challenging project you worked on and how you overcame the obstacles.",
+    "questionType": "behavioral",
+    "difficultyLevel": "medium",
+    "expectedAnswerKeywords": ["STAR method", "problem-solving", "teamwork", "communication", "results"],
+    "evaluationCriteria": {
+      "structure": "Uses STAR method or clear structure",
+      "specificity": "Provides specific examples and details",
+      "impact": "Demonstrates measurable results or learning",
+      "skills": "Shows relevant technical or soft skills"
+    },
+    "timeLimitSeconds": 180,
+    "skillsAssessed": ["problem-solving", "communication", "project management"]
+  }
+]
+
+Generate exactly $questionCount questions following this format, ensuring they are relevant to $jobTitle in the $jobCategory field with $difficultyLevel difficulty level.
+''';
+  }
+
+  /// Validate and enhance question data
+  Map<String, dynamic> _validateQuestionData(Map<String, dynamic> data) {
+    return {
+      'questionText':
+          data['questionText']?.toString() ?? 'Sample interview question',
+      'questionType': data['questionType']?.toString() ?? 'general',
+      'difficultyLevel': data['difficultyLevel']?.toString() ?? 'medium',
+      'expectedAnswerKeywords': _ensureList(data['expectedAnswerKeywords']),
+      'evaluationCriteria': data['evaluationCriteria'] ?? {},
+      'timeLimitSeconds': data['timeLimitSeconds'] ?? 120,
+      'skillsAssessed': _ensureList(data['skillsAssessed']),
+    };
+  }
+
   /// Create a meaningful error message for PDF extraction failures
   String _createPdfExtractionErrorMessage(String error) {
     return '''
