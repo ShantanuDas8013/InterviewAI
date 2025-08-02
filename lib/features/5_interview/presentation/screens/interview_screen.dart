@@ -12,7 +12,8 @@ import '../../data/models/job_role_model.dart';
 import '../../data/models/interview_session_model.dart';
 import '../../data/models/interview_question_model.dart';
 import '../../data/models/interview_result_model.dart';
-import '../../services/speech_to_text_service.dart';
+import '../../services/assembly_ai_service.dart';
+import '../../services/audio_recording_service.dart';
 import '../../services/text_to_speech_service.dart';
 import '../../services/database_service.dart';
 import 'interview_result_screen.dart';
@@ -46,7 +47,8 @@ class _InterviewScreenState extends State<InterviewScreen>
   late Animation<double> _rotationAnimation;
 
   // Services
-  final SpeechToTextService _speechService = SpeechToTextService();
+  final AudioRecordingService _audioService = AudioRecordingService();
+  final AssemblyAiService _transcriptionService = AssemblyAiService();
   final TextToSpeechService _ttsService = TextToSpeechService();
   final DatabaseService _databaseService = DatabaseService();
   final GeminiService _geminiService = GeminiService();
@@ -110,7 +112,8 @@ class _InterviewScreenState extends State<InterviewScreen>
 
   Future<void> _initializeServices() async {
     try {
-      await _speechService.initialize();
+      await _audioService.initialize();
+      await _transcriptionService.initialize();
       await _ttsService.initialize();
       await _geminiService.initialize();
     } catch (e) {
@@ -155,9 +158,88 @@ class _InterviewScreenState extends State<InterviewScreen>
     try {
       setState(() => _isProcessing = true);
 
-      // For now, create hardcoded questions based on job role
-      // In a real implementation, you would use the Gemini API
-      _questions = _createHardcodedQuestions();
+      // Use Gemini AI to generate professional interview questions
+      List<InterviewQuestionModel> tempQuestions;
+
+      try {
+        final questionsData = await _geminiService.generateInterviewQuestions(
+          jobTitle: widget.jobRole.title,
+          jobCategory: widget.jobRole.category,
+          requiredSkills: widget.jobRole.requiredSkills,
+          difficultyLevel: widget.difficultyLevel,
+          questionCount: widget.totalQuestions,
+          experienceLevel: widget.difficultyLevel == 'easy'
+              ? 'Junior'
+              : widget.difficultyLevel == 'hard'
+              ? 'Senior'
+              : 'Mid-level',
+        );
+
+        // Convert to InterviewQuestionModel objects
+        tempQuestions = questionsData.map((questionData) {
+          // Ensure required fields exist with fallbacks
+          return InterviewQuestionModel.fromJson({
+            'id': questionData['id'] ?? const Uuid().v4(),
+            'job_role_id': widget.jobRole.id,
+            'question_text': questionData['question_text'] ?? '',
+            'question_type': questionData['question_type'] ?? 'general',
+            'difficulty_level':
+                questionData['difficulty_level'] ?? widget.difficultyLevel,
+            'expected_answer_keywords':
+                questionData['expected_answer_keywords'] ?? [],
+            'sample_answer': questionData['sample_answer'] ?? '',
+            'evaluation_criteria': questionData['evaluation_criteria'] ?? [],
+            'time_limit_seconds': questionData['time_limit_seconds'] ?? 120,
+            'is_active': questionData['is_active'] ?? true,
+            'created_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+        }).toList();
+
+        debugPrint(
+          '✅ Generated ${tempQuestions.length} AI questions successfully',
+        );
+      } catch (e) {
+        debugPrint('⚠️ AI generation failed, using fallback: $e');
+        // Fallback to hardcoded questions if AI generation fails
+        tempQuestions = _createHardcodedQuestions();
+      }
+
+      // Save questions to database and get their IDs
+      final List<InterviewQuestionModel> savedQuestions = [];
+
+      for (final tempQuestion in tempQuestions) {
+        final savedQuestionId = await _databaseService.saveQuestion(
+          jobRoleId: widget.jobRole.id,
+          questionText: tempQuestion.questionText,
+          questionType: tempQuestion.questionType,
+          difficultyLevel: tempQuestion.difficultyLevel,
+          expectedAnswerKeywords: tempQuestion.expectedAnswerKeywords,
+          sampleAnswer: tempQuestion.sampleAnswer,
+          evaluationCriteria: tempQuestion.evaluationCriteria,
+          timeLimitSeconds: tempQuestion.timeLimitSeconds,
+        );
+
+        // Create a new question model with the database-generated ID
+        final savedQuestion = InterviewQuestionModel(
+          id: savedQuestionId,
+          jobRoleId: tempQuestion.jobRoleId,
+          questionText: tempQuestion.questionText,
+          questionType: tempQuestion.questionType,
+          difficultyLevel: tempQuestion.difficultyLevel,
+          expectedAnswerKeywords: tempQuestion.expectedAnswerKeywords,
+          sampleAnswer: tempQuestion.sampleAnswer,
+          evaluationCriteria: tempQuestion.evaluationCriteria,
+          timeLimitSeconds: tempQuestion.timeLimitSeconds,
+          isActive: tempQuestion.isActive,
+          createdAt: tempQuestion.createdAt,
+          updatedAt: tempQuestion.updatedAt,
+        );
+
+        savedQuestions.add(savedQuestion);
+      }
+
+      _questions = savedQuestions;
 
       setState(() => _isProcessing = false);
     } catch (e) {
@@ -270,11 +352,10 @@ class _InterviewScreenState extends State<InterviewScreen>
         .toList();
 
     return selectedQuestions.asMap().entries.map((entry) {
-      final index = entry.key;
       final question = entry.value;
 
       return InterviewQuestionModel(
-        id: 'q_${DateTime.now().millisecondsSinceEpoch}_$index',
+        id: const Uuid().v4(),
         jobRoleId: widget.jobRole.id,
         questionText: question['question_text'],
         questionType: question['question_type'],
@@ -318,10 +399,10 @@ class _InterviewScreenState extends State<InterviewScreen>
     // Short pause
     await Future.delayed(const Duration(milliseconds: 800));
 
-    // Note about speech recognition
-    if (!_speechService.isInitialized) {
+    // Note about audio recording
+    if (!_audioService.isInitialized) {
       await _speakText(
-        'It seems that speech recognition is not available on your device. You can still participate in the interview, but you\'ll need to mentally prepare your answers as we go through the questions.',
+        'It seems that audio recording is not available on your device. You can still participate in the interview, but you\'ll need to mentally prepare your answers as we go through the questions.',
         rate: 0.7,
       );
       await Future.delayed(const Duration(seconds: 1));
@@ -429,55 +510,32 @@ class _InterviewScreenState extends State<InterviewScreen>
         _showTranscript = true;
       });
 
-      // Check if speech recognition is initialized
-      if (!_speechService.isInitialized) {
+      // Start audio recording
+      final recordingPath = await _audioService.startRecording();
+      if (recordingPath == null) {
         _showErrorDialog(
-          'Speech recognition service is not available. Please check your device settings and permissions.',
+          'Failed to start audio recording. Please check your microphone permissions.',
         );
-        // If speech recognition failed to initialize, show a message to the user
-        // but continue with the interview flow
         setState(() {
           _isListening = false;
           _currentTranscript =
-              "[Speech recognition unavailable. Please continue with the interview.]";
+              "[Audio recording unavailable. Please continue with the interview.]";
         });
-        // Don't start a timer, just move on after a delay.
         await Future.delayed(const Duration(seconds: 5));
         await _handleNoAnswer(forceSkip: true);
         return;
       }
 
-      // Start listening with timeout
-      await _speechService.startListening(
-        onResult: (text, isFinal) {
-          if (!mounted) return;
-          setState(() {
-            if (isFinal) {
-              _finalTranscript = text;
-              _currentTranscript = '';
-
-              // If we got a final result with substantial content, update the timer
-              // to give the user more time to continue speaking
-              if (text.split(' ').length > 5) {
-                _resetListeningTimer();
-              }
-            } else {
-              _currentTranscript = text;
-            }
-          });
-
-          // Update microphone level simulation
-          _updateMicrophoneLevel();
-        },
-      );
-
       // Set timeout for listening (90 seconds max per question)
       _resetListeningTimer();
+
+      // Start microphone level monitoring
+      _startMicrophoneLevelMonitoring();
     } catch (e) {
       setState(() {
         _isListening = false;
         _currentTranscript =
-            "[Speech recognition error. Please continue with the interview.]";
+            "[Audio recording error. Please continue with the interview.]";
       });
       debugPrint('Failed to start listening: $e');
       await Future.delayed(const Duration(seconds: 5));
@@ -496,8 +554,23 @@ class _InterviewScreenState extends State<InterviewScreen>
   }
 
   void _updateMicrophoneLevel() {
+    // This method will be used by microphone level monitoring
     setState(() {
       _microphoneLevel = Random().nextDouble() * 0.8 + 0.2;
+    });
+  }
+
+  void _startMicrophoneLevelMonitoring() {
+    // Start a timer to periodically update microphone level
+    Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (!_isListening) {
+        timer.cancel();
+        setState(() {
+          _microphoneLevel = 0.0;
+        });
+        return;
+      }
+      _updateMicrophoneLevel();
     });
   }
 
@@ -505,32 +578,55 @@ class _InterviewScreenState extends State<InterviewScreen>
     _listeningTimer?.cancel();
 
     if (_isListening) {
-      // If speech recognition is initialized, stop it
-      if (_speechService.isInitialized) {
-        await _speechService.stopListening();
-      }
-
       setState(() {
         _isListening = false;
-        _showTranscript = false;
+        _showTranscript = true; // Keep transcript visible
+        _isProcessing = true; // Show processing state
       });
 
-      // Process the answer
-      final answer = _finalTranscript.isNotEmpty
-          ? _finalTranscript
-          : _currentTranscript;
+      try {
+        // Stop audio recording and get the recorded file path
+        final recordingPath = await _audioService.stopRecording();
 
-      // Check if the answer contains error messages
-      final cleanAnswer =
-          answer.contains("[Speech recognition unavailable") ||
-              answer.contains("[Speech recognition error")
-          ? ""
-          : answer;
+        if (recordingPath != null) {
+          setState(() {
+            _currentTranscript = 'Processing your response...';
+          });
 
-      if (cleanAnswer.isNotEmpty) {
-        await _processAnswer(cleanAnswer);
-      } else {
-        // No answer provided, ask if they want to skip
+          // Transcribe the audio using AssemblyAI
+          final transcribedText = await _transcriptionService.transcribeAudio(
+            recordingPath,
+          );
+
+          setState(() {
+            _finalTranscript = transcribedText;
+            _currentTranscript = '';
+            _isProcessing = false;
+            _showTranscript = false;
+          });
+
+          // Process the answer
+          if (_finalTranscript.isNotEmpty) {
+            await _processAnswer(_finalTranscript);
+          } else {
+            await _handleNoAnswer();
+          }
+        } else {
+          // No recording was made
+          setState(() {
+            _isProcessing = false;
+            _showTranscript = false;
+          });
+          await _handleNoAnswer();
+        }
+      } catch (e) {
+        debugPrint('Error in transcription: $e');
+        setState(() {
+          _isProcessing = false;
+          _showTranscript = false;
+          _finalTranscript = '';
+        });
+        _showErrorDialog('Failed to process your response: $e');
         await _handleNoAnswer();
       }
     }
@@ -734,7 +830,11 @@ class _InterviewScreenState extends State<InterviewScreen>
       _listeningTimer?.cancel();
 
       if (_isListening) {
-        await _speechService.stopListening();
+        await _audioService.cancelRecording();
+        setState(() {
+          _isListening = false;
+          _showTranscript = false;
+        });
       }
       if (_isSpeaking) {
         await _ttsService.stop();
