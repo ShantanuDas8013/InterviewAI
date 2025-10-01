@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/api/gemini_service.dart';
 import '../data/models/job_role_model.dart';
 import '../data/models/interview_question_model.dart';
+import 'database_service.dart';
 
 /// Service to handle dynamic interview question generation using Gemini AI
 class QuestionGenerationService {
@@ -14,6 +15,7 @@ class QuestionGenerationService {
   QuestionGenerationService._internal();
 
   final GeminiService _geminiService = GeminiService();
+  final DatabaseService _databaseService = DatabaseService();
   final SupabaseClient _supabase = Supabase.instance.client;
   final Uuid _uuid = const Uuid();
 
@@ -26,22 +28,119 @@ class QuestionGenerationService {
     bool useCache = true,
   }) async {
     try {
-      // Check if we have cached questions first
-      if (useCache) {
-        final cachedQuestions = await _getCachedQuestions(
-          jobRoleId: jobRole.id,
-          difficultyLevel: difficultyLevel,
-          limit: questionCount,
+      // Step 1: Check if we have existing questions in the database
+      debugPrint(
+        '🔍 Checking for existing questions for ${jobRole.title} ($difficultyLevel level)',
+      );
+
+      final existingQuestions = await _databaseService.fetchQuestionsForJobRole(
+        jobRole.id,
+        difficultyLevel: difficultyLevel,
+        limit: questionCount,
+      );
+
+      if (existingQuestions.length >= questionCount) {
+        debugPrint(
+          '🎯 SUCCESS: Found ${existingQuestions.length} existing questions in database for ${jobRole.title}',
+        );
+        debugPrint(
+          '📋 Using EXISTING questions from database - NO AI generation needed',
+        );
+        return existingQuestions.take(questionCount).toList();
+      }
+
+      // Step 2: If we don't have enough questions, check for any difficulty level
+      if (existingQuestions.length < questionCount) {
+        debugPrint(
+          '📊 Found ${existingQuestions.length} questions for specific difficulty, checking for any difficulty level',
         );
 
-        if (cachedQuestions.length >= questionCount) {
-          debugPrint('Using cached questions for ${jobRole.title}');
-          return cachedQuestions.take(questionCount).toList();
+        final allQuestionsForRole = await _databaseService
+            .fetchQuestionsForJobRole(jobRole.id, limit: questionCount);
+
+        if (allQuestionsForRole.length >= questionCount) {
+          debugPrint(
+            '🎯 SUCCESS: Found ${allQuestionsForRole.length} questions (mixed difficulty) for ${jobRole.title}',
+          );
+          debugPrint(
+            '📋 Using EXISTING questions from database - NO AI generation needed',
+          );
+          return allQuestionsForRole.take(questionCount).toList();
+        }
+
+        // Step 3: If we have some questions but not enough, supplement with AI
+        if (allQuestionsForRole.isNotEmpty) {
+          final remainingCount = questionCount - allQuestionsForRole.length;
+          debugPrint(
+            '🤖 HYBRID: Found ${allQuestionsForRole.length} existing questions, generating $remainingCount more with AI',
+          );
+          debugPrint(
+            '📋 Using COMBINATION of existing questions + AI-generated questions',
+          );
+
+          try {
+            final aiQuestions = await _generateQuestionsWithAI(
+              jobRole,
+              difficultyLevel,
+              remainingCount,
+              experienceLevel,
+            );
+
+            // Combine existing and new questions
+            final combinedQuestions = [...allQuestionsForRole, ...aiQuestions];
+            return combinedQuestions.take(questionCount).toList();
+          } catch (aiError) {
+            debugPrint(
+              '⚠️ AI generation failed, using ${allQuestionsForRole.length} existing questions: $aiError',
+            );
+            return allQuestionsForRole;
+          }
         }
       }
 
-      debugPrint('Generating new questions for ${jobRole.title}');
+      // Step 4: No existing questions found, generate all with AI
+      debugPrint(
+        '🤖 AI GENERATION: No existing questions found, generating all $questionCount questions with AI for ${jobRole.title}',
+      );
+      debugPrint(
+        '📋 Using ONLY AI-generated questions - no existing questions in database',
+      );
+      return await _generateQuestionsWithAI(
+        jobRole,
+        difficultyLevel,
+        questionCount,
+        experienceLevel,
+      );
+    } catch (e) {
+      debugPrint('❌ Error in question generation process: $e');
 
+      // Fallback: Try to get any existing questions
+      try {
+        final fallbackQuestions = await _databaseService
+            .fetchQuestionsForJobRole(jobRole.id, limit: questionCount);
+
+        if (fallbackQuestions.isNotEmpty) {
+          debugPrint(
+            '🔄 Using ${fallbackQuestions.length} fallback questions from database',
+          );
+          return fallbackQuestions;
+        }
+      } catch (fallbackError) {
+        debugPrint('❌ Fallback also failed: $fallbackError');
+      }
+
+      rethrow;
+    }
+  }
+
+  /// Generate questions using AI and save them to database
+  Future<List<InterviewQuestionModel>> _generateQuestionsWithAI(
+    JobRoleModel jobRole,
+    String difficultyLevel,
+    int questionCount,
+    String? experienceLevel,
+  ) async {
+    try {
       // Generate new questions using Gemini
       final generatedQuestions = await _geminiService
           .generateInterviewQuestions(

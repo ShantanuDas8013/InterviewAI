@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -16,6 +15,7 @@ import '../../services/assembly_ai_service.dart';
 import '../../services/audio_recording_service.dart';
 import '../../services/text_to_speech_service.dart';
 import '../../services/database_service.dart';
+import '../../services/question_generation_service.dart';
 import 'interview_result_screen.dart';
 
 class InterviewScreen extends StatefulWidget {
@@ -29,7 +29,7 @@ class InterviewScreen extends StatefulWidget {
     required this.jobRole,
     this.resumeId,
     this.difficultyLevel = 'medium',
-    this.totalQuestions = 10,
+    this.totalQuestions = 5,
   });
 
   @override
@@ -67,7 +67,7 @@ class _InterviewScreenState extends State<InterviewScreen>
   Timer? _listeningTimer;
   Timer? _interviewTimer;
   Duration _interviewDuration = Duration.zero;
-  List<Map<String, dynamic>> _userResponses = [];
+  final List<Map<String, dynamic>> _userResponses = [];
 
   // UI state
   double _microphoneLevel = 0.0;
@@ -158,217 +158,39 @@ class _InterviewScreenState extends State<InterviewScreen>
     try {
       setState(() => _isProcessing = true);
 
-      // Use Gemini AI to generate professional interview questions
-      List<InterviewQuestionModel> tempQuestions;
+      debugPrint('🎯 Starting question generation for ${widget.jobRole.title}');
 
-      try {
-        final questionsData = await _geminiService.generateInterviewQuestions(
-          jobTitle: widget.jobRole.title,
-          jobCategory: widget.jobRole.category,
-          requiredSkills: widget.jobRole.requiredSkills,
-          difficultyLevel: widget.difficultyLevel,
-          questionCount: widget.totalQuestions,
-          experienceLevel: widget.difficultyLevel == 'easy'
-              ? 'Junior'
-              : widget.difficultyLevel == 'hard'
-              ? 'Senior'
-              : 'Mid-level',
+      // Use the enhanced QuestionGenerationService that checks database first
+      final questionGenerationService = QuestionGenerationService();
+
+      _questions = await questionGenerationService.generateQuestionsForRole(
+        jobRole: widget.jobRole,
+        difficultyLevel: widget.difficultyLevel,
+        questionCount: widget.totalQuestions,
+        experienceLevel: widget.difficultyLevel == 'easy'
+            ? 'Junior'
+            : widget.difficultyLevel == 'hard'
+            ? 'Senior'
+            : 'Mid-level',
+        useCache: true,
+      );
+
+      debugPrint(
+        '✅ Successfully loaded ${_questions.length} questions for ${widget.jobRole.title}',
+      );
+
+      if (_questions.isEmpty) {
+        throw Exception(
+          'No questions could be generated or found for this role',
         );
-
-        // Convert to InterviewQuestionModel objects
-        tempQuestions = questionsData.map((questionData) {
-          // Ensure required fields exist with fallbacks
-          return InterviewQuestionModel.fromJson({
-            'id': questionData['id'] ?? const Uuid().v4(),
-            'job_role_id': widget.jobRole.id,
-            'question_text': questionData['question_text'] ?? '',
-            'question_type': questionData['question_type'] ?? 'general',
-            'difficulty_level':
-                questionData['difficulty_level'] ?? widget.difficultyLevel,
-            'expected_answer_keywords':
-                questionData['expected_answer_keywords'] ?? [],
-            'sample_answer': questionData['sample_answer'] ?? '',
-            'evaluation_criteria': questionData['evaluation_criteria'] ?? [],
-            'time_limit_seconds': questionData['time_limit_seconds'] ?? 120,
-            'is_active': questionData['is_active'] ?? true,
-            'created_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
-          });
-        }).toList();
-
-        debugPrint(
-          '✅ Generated ${tempQuestions.length} AI questions successfully',
-        );
-      } catch (e) {
-        debugPrint('⚠️ AI generation failed, using fallback: $e');
-        // Fallback to hardcoded questions if AI generation fails
-        tempQuestions = _createHardcodedQuestions();
       }
-
-      // Save questions to database and get their IDs
-      final List<InterviewQuestionModel> savedQuestions = [];
-
-      for (final tempQuestion in tempQuestions) {
-        final savedQuestionId = await _databaseService.saveQuestion(
-          jobRoleId: widget.jobRole.id,
-          questionText: tempQuestion.questionText,
-          questionType: tempQuestion.questionType,
-          difficultyLevel: tempQuestion.difficultyLevel,
-          expectedAnswerKeywords: tempQuestion.expectedAnswerKeywords,
-          sampleAnswer: tempQuestion.sampleAnswer,
-          evaluationCriteria: tempQuestion.evaluationCriteria,
-          timeLimitSeconds: tempQuestion.timeLimitSeconds,
-        );
-
-        // Create a new question model with the database-generated ID
-        final savedQuestion = InterviewQuestionModel(
-          id: savedQuestionId,
-          jobRoleId: tempQuestion.jobRoleId,
-          questionText: tempQuestion.questionText,
-          questionType: tempQuestion.questionType,
-          difficultyLevel: tempQuestion.difficultyLevel,
-          expectedAnswerKeywords: tempQuestion.expectedAnswerKeywords,
-          sampleAnswer: tempQuestion.sampleAnswer,
-          evaluationCriteria: tempQuestion.evaluationCriteria,
-          timeLimitSeconds: tempQuestion.timeLimitSeconds,
-          isActive: tempQuestion.isActive,
-          createdAt: tempQuestion.createdAt,
-          updatedAt: tempQuestion.updatedAt,
-        );
-
-        savedQuestions.add(savedQuestion);
-      }
-
-      _questions = savedQuestions;
 
       setState(() => _isProcessing = false);
     } catch (e) {
       setState(() => _isProcessing = false);
+      debugPrint('❌ Error in question generation: $e');
       _showErrorDialog('Failed to generate questions: $e');
     }
-  }
-
-  List<InterviewQuestionModel> _createHardcodedQuestions() {
-    final baseQuestions = <Map<String, dynamic>>[
-      {
-        'question_text': 'Can you tell me about yourself and your background?',
-        'question_type': 'general',
-        'difficulty_level': 'easy',
-        'expected_keywords': ['experience', 'skills', 'background'],
-        'sample_answer':
-            'I am a ${widget.jobRole.title} with experience in ${widget.jobRole.requiredSkills.take(3).join(', ')}. I have worked on various projects that required...',
-      },
-      {
-        'question_text':
-            'What interests you about this ${widget.jobRole.title} position?',
-        'question_type': 'behavioral',
-        'difficulty_level': 'easy',
-        'expected_keywords': ['interest', 'motivation', 'skills'],
-        'sample_answer':
-            'I am interested in this position because it combines my skills in ${widget.jobRole.requiredSkills.first} with my passion for...',
-      },
-      {
-        'question_text':
-            'Can you explain your experience with ${widget.jobRole.requiredSkills.isNotEmpty ? widget.jobRole.requiredSkills.first : 'relevant technologies'}?',
-        'question_type': 'technical',
-        'difficulty_level': 'medium',
-        'expected_keywords': widget.jobRole.requiredSkills,
-        'sample_answer':
-            'I have worked extensively with ${widget.jobRole.requiredSkills.isNotEmpty ? widget.jobRole.requiredSkills.first : 'various technologies'} for...',
-      },
-      {
-        'question_text':
-            'Describe a challenging project you\'ve worked on and how you overcame difficulties.',
-        'question_type': 'behavioral',
-        'difficulty_level': 'medium',
-        'expected_keywords': ['challenge', 'project', 'solution', 'overcome'],
-        'sample_answer':
-            'I worked on a project where we faced technical challenges with... I overcame this by...',
-      },
-      {
-        'question_text':
-            'How do you stay updated with the latest trends in ${widget.jobRole.category}?',
-        'question_type': 'general',
-        'difficulty_level': 'easy',
-        'expected_keywords': ['learning', 'trends', 'update', 'technology'],
-        'sample_answer':
-            'I stay updated by reading industry blogs, attending conferences, taking online courses...',
-      },
-    ];
-
-    // Add more technical questions based on job role
-    if (widget.jobRole.requiredSkills.length > 1) {
-      baseQuestions.addAll([
-        {
-          'question_text':
-              'How would you approach a problem involving ${widget.jobRole.requiredSkills.length > 1 ? widget.jobRole.requiredSkills[1] : widget.jobRole.requiredSkills.first}?',
-          'question_type': 'technical',
-          'difficulty_level': 'medium',
-          'expected_keywords': widget.jobRole.requiredSkills,
-          'sample_answer':
-              'I would start by analyzing the requirements, then design a solution using best practices...',
-        },
-        {
-          'question_text':
-              'Describe your experience working in a team environment.',
-          'question_type': 'behavioral',
-          'difficulty_level': 'easy',
-          'expected_keywords': ['team', 'collaboration', 'communication'],
-          'sample_answer':
-              'I have extensive experience working in cross-functional teams where I contributed by...',
-        },
-        {
-          'question_text':
-              'What are your strengths and how do they relate to this role?',
-          'question_type': 'behavioral',
-          'difficulty_level': 'easy',
-          'expected_keywords': ['strengths', 'skills', 'role'],
-          'sample_answer':
-              'My key strengths include attention to detail, problem-solving abilities, and strong communication skills which are essential for...',
-        },
-        {
-          'question_text': 'Where do you see yourself in 5 years?',
-          'question_type': 'general',
-          'difficulty_level': 'easy',
-          'expected_keywords': ['career', 'goals', 'growth'],
-          'sample_answer':
-              'In 5 years, I see myself as a senior professional who has contributed significantly to...',
-        },
-        {
-          'question_text':
-              'Do you have any questions for us about the role or company?',
-          'question_type': 'general',
-          'difficulty_level': 'easy',
-          'expected_keywords': ['questions', 'role', 'company'],
-          'sample_answer':
-              'Yes, I would like to know more about the team structure, growth opportunities, and the biggest challenges facing the team.',
-        },
-      ]);
-    }
-
-    // Select questions based on total questions requested
-    final selectedQuestions = baseQuestions
-        .take(widget.totalQuestions)
-        .toList();
-
-    return selectedQuestions.asMap().entries.map((entry) {
-      final question = entry.value;
-
-      return InterviewQuestionModel(
-        id: const Uuid().v4(),
-        jobRoleId: widget.jobRole.id,
-        questionText: question['question_text'],
-        questionType: question['question_type'],
-        difficultyLevel: question['difficulty_level'],
-        expectedAnswerKeywords: List<String>.from(
-          question['expected_keywords'] ?? [],
-        ),
-        sampleAnswer: question['sample_answer'],
-        isActive: true,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-    }).toList();
   }
 
   Future<void> _speakWelcomeMessage() async {
@@ -748,22 +570,20 @@ class _InterviewScreenState extends State<InterviewScreen>
         result: result,
       );
 
-      // Update session status
-      await _databaseService.updateSessionStatus(
-        _currentSession!.id,
-        'completed',
-      );
-
       setState(() => _isProcessing = false);
 
-      // Navigate to results screen
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => InterviewResultScreen(result: result),
-          ),
-        );
-      }
+      // Navigate to results screen using post-frame callback
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => InterviewResultScreen(
+                interviewSessionId: _currentSession!.id,
+              ),
+            ),
+          );
+        }
+      });
     } catch (e) {
       setState(() => _isProcessing = false);
       _showErrorDialog('Failed to generate interview result: $e');
@@ -780,17 +600,11 @@ class _InterviewScreenState extends State<InterviewScreen>
 
     // Create question-answer pairs
     final questionAnswerPairs = _userResponses.map((response) {
-      final question = _questions.firstWhere(
-        (q) => q.id == response['question_id'],
-        orElse: () => _questions.first,
-      );
-
       return QuestionAnswerPair(
         questionId: response['question_id'],
         questionText: response['question_text'],
         userAnswer: response['user_answer'],
         idealAnswer:
-            question.sampleAnswer ??
             'A comprehensive answer addressing the key points of the question.',
         feedback:
             'Good response! Consider adding more specific examples and technical details.',
@@ -843,7 +657,12 @@ class _InterviewScreenState extends State<InterviewScreen>
       if (_userResponses.isNotEmpty) {
         await _generateInterviewResult();
       } else {
-        Navigator.of(context).pop();
+        // Use post-frame callback for navigation
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+        });
       }
     }
   }
@@ -918,7 +737,7 @@ class _InterviewScreenState extends State<InterviewScreen>
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) async {
+      onPopInvokedWithResult: (didPop, result) async {
         if (!didPop) {
           await _endInterview();
         }
@@ -955,9 +774,9 @@ class _InterviewScreenState extends State<InterviewScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.2),
+              color: Colors.green.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.green.withOpacity(0.3)),
+              border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1033,8 +852,8 @@ class _InterviewScreenState extends State<InterviewScreen>
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: _isSpeaking
-                          ? AppTheme.primaryColor.withOpacity(0.3)
-                          : Colors.green.withOpacity(0.3),
+                          ? AppTheme.primaryColor.withValues(alpha: 0.3)
+                          : Colors.green.withValues(alpha: 0.3),
                       width: 2,
                     ),
                   ),
@@ -1057,7 +876,9 @@ class _InterviewScreenState extends State<InterviewScreen>
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: Colors.green.withOpacity(0.1 - (index * 0.02)),
+                        color: Colors.green.withValues(
+                          alpha: 0.1 - (index * 0.02),
+                        ),
                         width: 1,
                       ),
                     ),
@@ -1083,7 +904,7 @@ class _InterviewScreenState extends State<InterviewScreen>
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.primaryColor.withOpacity(0.4),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.4),
                       blurRadius: 20,
                       spreadRadius: 5,
                     ),
@@ -1108,7 +929,7 @@ class _InterviewScreenState extends State<InterviewScreen>
               height: 6,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(3),
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
               ),
               child: FractionallySizedBox(
                 alignment: Alignment.centerLeft,
@@ -1164,7 +985,10 @@ class _InterviewScreenState extends State<InterviewScreen>
         const SizedBox(height: 8),
         Text(
           subText,
-          style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 16),
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.7),
+            fontSize: 16,
+          ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 20),
@@ -1173,7 +997,7 @@ class _InterviewScreenState extends State<InterviewScreen>
             value: _questions.isNotEmpty
                 ? _currentQuestionIndex / _questions.length
                 : 0,
-            backgroundColor: Colors.white.withOpacity(0.1),
+            backgroundColor: Colors.white.withValues(alpha: 0.1),
             valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
           ),
       ],
@@ -1189,9 +1013,9 @@ class _InterviewScreenState extends State<InterviewScreen>
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1207,7 +1031,7 @@ class _InterviewScreenState extends State<InterviewScreen>
               Text(
                 'Your Answer:',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha: 0.8),
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1219,7 +1043,7 @@ class _InterviewScreenState extends State<InterviewScreen>
             displayText.isEmpty ? 'Start speaking...' : displayText,
             style: TextStyle(
               color: displayText.isEmpty
-                  ? Colors.white.withOpacity(0.4)
+                  ? Colors.white.withValues(alpha: 0.4)
                   : Colors.white,
               fontSize: 16,
               height: 1.4,
@@ -1286,7 +1110,7 @@ class _InterviewScreenState extends State<InterviewScreen>
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.3),
+              color: color.withValues(alpha: 0.3),
               blurRadius: 15,
               spreadRadius: 2,
             ),

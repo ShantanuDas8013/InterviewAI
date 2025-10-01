@@ -80,17 +80,21 @@ class DatabaseService {
       if (phoneNumber != null) updateData['phone_number'] = phoneNumber;
       if (location != null) updateData['location'] = location;
       if (bio != null) updateData['bio'] = bio;
-      if (experienceLevel != null)
+      if (experienceLevel != null) {
         updateData['experience_level'] = experienceLevel;
-      if (currentCompany != null)
+      }
+      if (currentCompany != null) {
         updateData['current_company'] = currentCompany;
-      if (currentPosition != null)
+      }
+      if (currentPosition != null) {
         updateData['current_position'] = currentPosition;
+      }
       if (linkedinUrl != null) updateData['linkedin_url'] = linkedinUrl;
       if (githubUrl != null) updateData['github_url'] = githubUrl;
       if (portfolioUrl != null) updateData['portfolio_url'] = portfolioUrl;
-      if (profilePictureUrl != null)
+      if (profilePictureUrl != null) {
         updateData['profile_picture_url'] = profilePictureUrl;
+      }
       // Note: preferredJobRoles would need ARRAY type support in the table
 
       if (updateData.isEmpty) {

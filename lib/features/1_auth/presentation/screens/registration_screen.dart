@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -113,10 +114,19 @@ class _RegistrationScreenState extends State<RegistrationScreen>
 
   Future<void> _registerWithSupabase() async {
     try {
-      print('Registration data:');
-      print('Email: ${_emailController.text.trim()}');
-      print('Full Name: ${_fullNameController.text.trim()}');
-      print('Password length: ${_passwordController.text.length}');
+      developer.log('Registration data', name: 'RegistrationScreen');
+      developer.log(
+        'Email: ${_emailController.text.trim()}',
+        name: 'RegistrationScreen',
+      );
+      developer.log(
+        'Full Name: ${_fullNameController.text.trim()}',
+        name: 'RegistrationScreen',
+      );
+      developer.log(
+        'Password length: ${_passwordController.text.length}',
+        name: 'RegistrationScreen',
+      );
 
       final response = await _authService.registerWithEmailAndPassword(
         email: _emailController.text.trim(),
@@ -128,11 +138,24 @@ class _RegistrationScreenState extends State<RegistrationScreen>
         throw Exception('Registration failed - no user returned');
       }
 
-      print('User registered successfully with Supabase');
-      print('User ID: ${response.user!.id}');
-      print('User Email: ${response.user!.email}');
+      developer.log(
+        'User registered successfully with Supabase',
+        name: 'RegistrationScreen',
+      );
+      developer.log(
+        'User ID: ${response.user!.id}',
+        name: 'RegistrationScreen',
+      );
+      developer.log(
+        'User Email: ${response.user!.email}',
+        name: 'RegistrationScreen',
+      );
     } catch (e) {
-      print('Supabase registration error: $e');
+      developer.log(
+        'Supabase registration error: $e',
+        name: 'RegistrationScreen',
+        error: e,
+      );
       throw Exception(e.toString());
     }
   }
@@ -217,14 +240,14 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                 height: 80,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.deepPurple.withOpacity(0.1),
+                  color: Colors.deepPurple.withValues(alpha: 0.1),
                   border: Border.all(
                     color: Colors.deepPurple.shade200,
                     width: 2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.purpleAccent.withOpacity(0.3),
+                      color: Colors.purpleAccent.withValues(alpha: 0.3),
                       blurRadius: 20,
                       spreadRadius: 5,
                     ),
@@ -256,7 +279,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
           'Join Interview AI and start your journey',
           style: TextStyle(
             fontSize: 16,
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha: 0.8),
             fontWeight: FontWeight.w400,
           ),
           textAlign: TextAlign.center,
@@ -268,12 +291,15 @@ class _RegistrationScreenState extends State<RegistrationScreen>
   Widget _buildRegistrationForm() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -409,26 +435,26 @@ class _RegistrationScreenState extends State<RegistrationScreen>
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
-        prefixIcon: Icon(icon, color: Colors.white.withOpacity(0.8)),
+        labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+        prefixIcon: Icon(icon, color: Colors.white.withValues(alpha: 0.8)),
         suffixIcon: isPassword
             ? IconButton(
                 onPressed: onTogglePassword,
                 icon: Icon(
                   isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha: 0.8),
                 ),
               )
             : null,
         filled: true,
-        fillColor: Colors.white.withOpacity(0.1),
+        fillColor: Colors.white.withValues(alpha: 0.1),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -461,13 +487,13 @@ class _RegistrationScreenState extends State<RegistrationScreen>
               _acceptTerms = value ?? false;
             });
           },
-          fillColor: MaterialStateProperty.resolveWith((states) {
-            if (states.contains(MaterialState.selected)) {
+          fillColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
               return Colors.deepPurpleAccent;
             }
             return Colors.transparent;
           }),
-          side: BorderSide(color: Colors.white.withOpacity(0.8)),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.8)),
         ),
         Expanded(
           child: Padding(
@@ -475,7 +501,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
             child: RichText(
               text: TextSpan(
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha: 0.8),
                   fontSize: 14,
                 ),
                 children: [
@@ -517,7 +543,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.deepPurpleAccent.withOpacity(0.3),
+            color: Colors.deepPurpleAccent.withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -559,7 +585,10 @@ class _RegistrationScreenState extends State<RegistrationScreen>
       children: [
         Text(
           'Already have an account? ',
-          style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 16),
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.8),
+            fontSize: 16,
+          ),
         ),
         GestureDetector(
           onTap: () => Navigator.pop(context),

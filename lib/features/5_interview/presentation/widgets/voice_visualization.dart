@@ -9,13 +9,13 @@ class VoiceVisualization extends StatefulWidget {
   final double maxHeight;
 
   const VoiceVisualization({
-    Key? key,
+    super.key,
     required this.isActive,
     required this.color,
     this.barCount = 30,
     this.minHeight = 5.0,
     this.maxHeight = 60.0,
-  }) : super(key: key);
+  });
 
   @override
   State<VoiceVisualization> createState() => _VoiceVisualizationState();
@@ -35,10 +35,7 @@ class _VoiceVisualizationState extends State<VoiceVisualization>
       duration: const Duration(milliseconds: 150),
     );
 
-    _heights = List.generate(
-      widget.barCount,
-      (_) => _generateRandomHeight(),
-    );
+    _heights = List.generate(widget.barCount, (_) => _generateRandomHeight());
 
     if (widget.isActive) {
       _startAnimation();
@@ -100,7 +97,9 @@ class _VoiceVisualizationState extends State<VoiceVisualization>
       width: 3,
       height: height,
       decoration: BoxDecoration(
-        color: widget.isActive ? widget.color : widget.color.withOpacity(0.3),
+        color: widget.isActive
+            ? widget.color
+            : widget.color.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(5),
       ),
     );

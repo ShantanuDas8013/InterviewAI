@@ -97,7 +97,7 @@ class InterviewProvider extends ChangeNotifier {
   Future<void> startInterview({
     required JobRoleModel jobRole,
     String? resumeId,
-    int totalQuestions = 10,
+    int totalQuestions = 5,
     String difficultyLevel = 'medium',
   }) async {
     try {
@@ -149,7 +149,7 @@ class InterviewProvider extends ChangeNotifier {
   ) async {
     try {
       debugPrint(
-        'Generating questions for ${jobRole.title} - ${totalQuestions} questions at $difficultyLevel level',
+        'Generating questions for ${jobRole.title} - $totalQuestions questions at $difficultyLevel level',
       );
 
       // Use the AI-powered question generation service
@@ -306,7 +306,7 @@ class InterviewProvider extends ChangeNotifier {
       // Generate new questions
       await _generateQuestions(
         _jobRole!,
-        _currentSession?.totalQuestions ?? 10,
+        _currentSession?.totalQuestions ?? 5,
         _currentSession?.difficultyLevel ?? 'medium',
       );
 

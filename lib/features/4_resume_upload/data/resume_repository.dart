@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/services/storage_service.dart';
@@ -45,7 +44,6 @@ class ResumeRepository {
 
       // Upload file to storage using StorageService
       final storagePath = '$userId/$fileName';
-      final file = File(filePath);
 
       // Use the core StorageService to upload the file
       final fileUrl = await _storageService.uploadFileFromPath(

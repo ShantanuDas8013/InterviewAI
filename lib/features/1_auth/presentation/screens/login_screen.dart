@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -104,8 +105,11 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _loginWithSupabase() async {
     try {
-      print('Login attempt:');
-      print('Email: ${_emailController.text.trim()}');
+      developer.log('Login attempt', name: 'LoginScreen');
+      developer.log(
+        'Email: ${_emailController.text.trim()}',
+        name: 'LoginScreen',
+      );
 
       final response = await _authService.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
@@ -116,11 +120,11 @@ class _LoginScreenState extends State<LoginScreen>
         throw Exception('Login failed - no user returned');
       }
 
-      print('User logged in successfully');
-      print('User ID: ${response.user!.id}');
-      print('User Email: ${response.user!.email}');
+      developer.log('User logged in successfully', name: 'LoginScreen');
+      developer.log('User ID: ${response.user!.id}', name: 'LoginScreen');
+      developer.log('User Email: ${response.user!.email}', name: 'LoginScreen');
     } catch (e) {
-      print('Supabase login error: $e');
+      developer.log('Supabase login error: $e', name: 'LoginScreen', error: e);
       throw Exception(e.toString());
     }
   }
@@ -253,7 +257,7 @@ class _LoginScreenState extends State<LoginScreen>
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.deepPurpleAccent.withOpacity(0.3),
+                      color: Colors.deepPurpleAccent.withValues(alpha: 0.3),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -281,7 +285,7 @@ class _LoginScreenState extends State<LoginScreen>
           'Sign in to continue your interview journey',
           style: TextStyle(
             fontSize: 16,
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha: 0.8),
             fontWeight: FontWeight.w400,
           ),
           textAlign: TextAlign.center,
@@ -293,12 +297,15 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildLoginForm() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -369,26 +376,26 @@ class _LoginScreenState extends State<LoginScreen>
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
-        prefixIcon: Icon(icon, color: Colors.white.withOpacity(0.8)),
+        labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+        prefixIcon: Icon(icon, color: Colors.white.withValues(alpha: 0.8)),
         suffixIcon: isPassword
             ? IconButton(
                 onPressed: onTogglePassword,
                 icon: Icon(
                   isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha: 0.8),
                 ),
               )
             : null,
         filled: true,
-        fillColor: Colors.white.withOpacity(0.1),
+        fillColor: Colors.white.withValues(alpha: 0.1),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -425,19 +432,19 @@ class _LoginScreenState extends State<LoginScreen>
                     _rememberMe = value ?? false;
                   });
                 },
-                fillColor: MaterialStateProperty.resolveWith((states) {
-                  if (states.contains(MaterialState.selected)) {
+                fillColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
                     return Colors.deepPurpleAccent;
                   }
                   return Colors.transparent;
                 }),
-                side: BorderSide(color: Colors.white.withOpacity(0.8)),
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.8)),
               ),
               Flexible(
                 child: Text(
                   'Remember me',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 13, // Slightly reduced font size
                   ),
                   overflow: TextOverflow.ellipsis, // Handle overflow
@@ -481,7 +488,7 @@ class _LoginScreenState extends State<LoginScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.deepPurpleAccent.withOpacity(0.3),
+            color: Colors.deepPurpleAccent.withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -523,7 +530,10 @@ class _LoginScreenState extends State<LoginScreen>
       children: [
         Text(
           'Don\'t have an account? ',
-          style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 16),
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.8),
+            fontSize: 16,
+          ),
         ),
         GestureDetector(
           onTap: () => Navigator.pushNamed(context, '/register'),

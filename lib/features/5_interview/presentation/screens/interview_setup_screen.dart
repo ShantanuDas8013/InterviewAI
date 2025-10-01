@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
 import '../../../../core/constants/theme.dart';
 import '../../../../core/services/auth_service.dart';
-import '../../../../core/services/database_service.dart';
+import '../../services/database_service.dart';
 import '../../../2_home/presentation/widgets/job_role_selector.dart';
 import '../../data/models/job_role_model.dart';
 import 'interview_screen.dart';
@@ -25,6 +24,7 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
   String? _selectedJobRole;
   bool _isLoading = true;
   String? _errorMessage;
+  String _questionSourceInfo = '';
 
   // Animation controllers
   late AnimationController _animationController;
@@ -148,6 +148,64 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
     setState(() {
       _selectedJobRole = role;
     });
+
+    // Check questions availability for the selected role
+    _checkQuestionsAvailability(role);
+  }
+
+  Future<void> _checkQuestionsAvailability(String roleName) async {
+    try {
+      // Find the job role from the database
+      final jobRolesData = await _databaseService.getJobRoles();
+      final selectedJobRoleData = jobRolesData.firstWhere(
+        (role) => role['title'] == roleName,
+        orElse: () => {},
+      );
+
+      if (selectedJobRoleData.isNotEmpty) {
+        final jobRoleId = selectedJobRoleData['id'];
+
+        // Count existing questions for this role
+        final questionsCount = await _databaseService.countQuestionsForJobRole(
+          jobRoleId,
+          difficultyLevel: 'medium',
+        );
+
+        setState(() {
+          if (questionsCount >= 5) {
+            _questionSourceInfo =
+                '✅ Using $questionsCount existing questions from database';
+          } else if (questionsCount > 0) {
+            _questionSourceInfo =
+                '⚠️ Using $questionsCount existing + ${5 - questionsCount} AI-generated questions';
+          } else {
+            _questionSourceInfo =
+                '🤖 Generating 5 new questions with AI for this role';
+          }
+        });
+
+        debugPrint(
+          '📊 Role: $roleName has $questionsCount existing questions in database',
+        );
+
+        if (questionsCount >= 5) {
+          debugPrint(
+            '✅ Sufficient questions available - will use existing ones',
+          );
+        } else if (questionsCount > 0) {
+          debugPrint(
+            '⚠️ Partial questions available - will supplement with AI',
+          );
+        } else {
+          debugPrint('🤖 No questions available - will generate with AI');
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _questionSourceInfo = '❌ Error checking questions availability';
+      });
+      debugPrint('Error checking questions availability: $e');
+    }
   }
 
   void _startInterview() async {
@@ -182,11 +240,20 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
       final jobRolesData = await _databaseService.getJobRoles();
       final selectedJobRoleData = jobRolesData.firstWhere(
         (role) => role['title'] == _selectedJobRole,
-        orElse: () => throw Exception('Selected job role not found in database'),
+        orElse: () =>
+            throw Exception('Selected job role not found in database'),
       );
-      
+
       // Create a job role model from the database data
       final jobRoleModel = JobRoleModel.fromJson(selectedJobRoleData);
+
+      // Check if questions exist for this job role
+      final existingQuestionsCount = await _databaseService
+          .countQuestionsForJobRole(jobRoleModel.id, difficultyLevel: 'medium');
+
+      debugPrint(
+        'Found $existingQuestionsCount existing questions for ${jobRoleModel.title}',
+      );
 
       // Navigate to the interview screen
       if (!mounted) return;
@@ -197,7 +264,7 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
             jobRole: jobRoleModel,
             resumeId: _userResume?['id'],
             difficultyLevel: 'medium',
-            totalQuestions: 10,
+            totalQuestions: 5,
           ),
         ),
       );
@@ -217,59 +284,6 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
         });
       }
     }
-  }
-
-  List<String> _getSkillsForJobRole(String jobRole) {
-    final skillsMap = {
-      'Frontend Developer': ['HTML', 'CSS', 'JavaScript', 'React', 'Vue.js'],
-      'Backend Developer': ['Node.js', 'Python', 'Java', 'SQL', 'REST APIs'],
-      'Full Stack Developer': ['JavaScript', 'React', 'Node.js', 'SQL', 'Git'],
-      'Data Scientist': [
-        'Python',
-        'R',
-        'SQL',
-        'Machine Learning',
-        'Statistics',
-      ],
-      'Product Manager': [
-        'Product Strategy',
-        'Analytics',
-        'Communication',
-        'Leadership',
-      ],
-      'Digital Marketing Specialist': [
-        'SEO',
-        'SEM',
-        'Social Media',
-        'Analytics',
-        'Content Marketing',
-      ],
-      'Mobile Developer': [
-        'Flutter',
-        'React Native',
-        'Swift',
-        'Kotlin',
-        'Mobile UI/UX',
-      ],
-      'DevOps Engineer': ['Docker', 'Kubernetes', 'AWS', 'CI/CD', 'Linux'],
-      'UI/UX Designer': [
-        'Figma',
-        'Adobe XD',
-        'User Research',
-        'Prototyping',
-        'Design Systems',
-      ],
-      'Software Engineer': [
-        'Programming',
-        'Algorithms',
-        'System Design',
-        'Testing',
-        'Git',
-      ],
-    };
-
-    return skillsMap[jobRole] ??
-        ['Communication', 'Problem Solving', 'Teamwork', 'Technical Skills'];
   }
 
   // Helper method to format date for display
@@ -299,7 +313,7 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.arrow_back, size: 20),
@@ -345,6 +359,9 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
                         selectedRole: _selectedJobRole,
                         onRoleSelected: _onJobRoleSelected,
                       ),
+                const SizedBox(height: AppTheme.paddingM),
+                if (_selectedJobRole != null && _questionSourceInfo.isNotEmpty)
+                  _buildQuestionSourceInfo(),
                 const SizedBox(height: AppTheme.paddingL),
                 _buildStartInterviewButton(),
               ],
@@ -411,7 +428,7 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: AppTheme.accentColor.withOpacity(0.2),
+                  color: AppTheme.accentColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -565,6 +582,64 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
     );
   }
 
+  Widget _buildQuestionSourceInfo() {
+    Color infoColor;
+    IconData infoIcon;
+
+    if (_questionSourceInfo.startsWith('✅')) {
+      infoColor = Colors.green;
+      infoIcon = Icons.check_circle;
+    } else if (_questionSourceInfo.startsWith('⚠️')) {
+      infoColor = Colors.orange;
+      infoIcon = Icons.warning;
+    } else if (_questionSourceInfo.startsWith('🤖')) {
+      infoColor = Colors.blue;
+      infoIcon = Icons.smart_toy;
+    } else {
+      infoColor = Colors.red;
+      infoIcon = Icons.error;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.paddingM),
+      decoration: BoxDecoration(
+        color: infoColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppTheme.cardBorderRadius),
+        border: Border.all(color: infoColor.withValues(alpha: 0.3), width: 1),
+      ),
+      child: Row(
+        children: [
+          Icon(infoIcon, color: infoColor, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Question Source',
+                  style: TextStyle(
+                    fontSize: AppTheme.fontSizeSmall,
+                    color: AppTheme.textSecondaryColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _questionSourceInfo,
+                  style: TextStyle(
+                    fontSize: AppTheme.fontSizeRegular,
+                    color: infoColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStartInterviewButton() {
     return SizedBox(
       width: double.infinity,
@@ -578,8 +653,8 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
             borderRadius: BorderRadius.circular(AppTheme.buttonBorderRadius),
           ),
           elevation: 4,
-          disabledBackgroundColor: AppTheme.accentColor.withOpacity(0.5),
-          disabledForegroundColor: Colors.white.withOpacity(0.7),
+          disabledBackgroundColor: AppTheme.accentColor.withValues(alpha: 0.5),
+          disabledForegroundColor: Colors.white.withValues(alpha: 0.7),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

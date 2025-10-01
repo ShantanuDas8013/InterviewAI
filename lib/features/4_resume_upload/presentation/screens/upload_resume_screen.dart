@@ -261,7 +261,7 @@ class _UploadResumeScreenState extends State<UploadResumeScreen>
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.arrow_back, size: 20),
@@ -316,7 +316,7 @@ class _UploadResumeScreenState extends State<UploadResumeScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppTheme.accentColor.withOpacity(0.2),
+                  color: AppTheme.accentColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppTheme.accentColor, width: 2),
                 ),
@@ -368,16 +368,19 @@ class _UploadResumeScreenState extends State<UploadResumeScreen>
             padding: const EdgeInsets.all(16),
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.1),
+              color: Colors.red.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(AppTheme.cardBorderRadius),
-              border: Border.all(color: Colors.red.withOpacity(0.3), width: 1),
+              border: Border.all(
+                color: Colors.red.withValues(alpha: 0.3),
+                width: 1,
+              ),
             ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.2),
+                    color: Colors.red.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -415,10 +418,10 @@ class _UploadResumeScreenState extends State<UploadResumeScreen>
             padding: const EdgeInsets.all(16),
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
+              color: Colors.green.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(AppTheme.cardBorderRadius),
               border: Border.all(
-                color: Colors.green.withOpacity(0.3),
+                color: Colors.green.withValues(alpha: 0.3),
                 width: 1,
               ),
             ),
@@ -427,7 +430,7 @@ class _UploadResumeScreenState extends State<UploadResumeScreen>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.2),
+                    color: Colors.green.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -521,7 +524,7 @@ class _UploadResumeScreenState extends State<UploadResumeScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.2),
+                  color: Colors.green.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.green, width: 2),
                 ),
@@ -612,10 +615,10 @@ class _UploadResumeScreenState extends State<UploadResumeScreen>
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppTheme.accentColor.withOpacity(0.1),
+              color: AppTheme.accentColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: AppTheme.accentColor.withOpacity(0.3),
+                color: AppTheme.accentColor.withValues(alpha: 0.3),
                 width: 2,
               ),
             ),
@@ -651,10 +654,10 @@ class _UploadResumeScreenState extends State<UploadResumeScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.accentColor.withOpacity(0.1),
+              color: AppTheme.accentColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppTheme.accentColor.withOpacity(0.2),
+                color: AppTheme.accentColor.withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -708,7 +711,7 @@ class _UploadResumeScreenState extends State<UploadResumeScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.accentColor.withOpacity(0.3),
+            color: AppTheme.accentColor.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -751,9 +754,9 @@ class _UploadResumeScreenState extends State<UploadResumeScreen>
     return Container(
       height: 48,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
       child: Material(
         color: Colors.transparent,
@@ -822,7 +825,7 @@ class _UploadResumeScreenState extends State<UploadResumeScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppTheme.accentColor.withOpacity(0.2),
+                  color: AppTheme.accentColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: AppTheme.accentColor, size: 20),
@@ -856,7 +859,7 @@ class _UploadResumeScreenState extends State<UploadResumeScreen>
           ),
           const SizedBox(height: 16),
           LinearProgressIndicator(
-            backgroundColor: AppTheme.accentColor.withOpacity(0.2),
+            backgroundColor: AppTheme.accentColor.withValues(alpha: 0.2),
             valueColor: const AlwaysStoppedAnimation<Color>(
               AppTheme.accentColor,
             ),
@@ -888,10 +891,10 @@ class _UploadResumeScreenState extends State<UploadResumeScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.accentColor.withOpacity(0.05),
+        color: AppTheme.accentColor.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.accentColor.withOpacity(0.2),
+          color: AppTheme.accentColor.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -923,17 +926,17 @@ class _UploadResumeScreenState extends State<UploadResumeScreen>
                     ),
                     decoration: BoxDecoration(
                       color: _analysisData != null
-                          ? Colors.green.withOpacity(0.2)
+                          ? Colors.green.withValues(alpha: 0.2)
                           : (isAnalyzed
-                                ? Colors.blue.withOpacity(0.2)
-                                : Colors.orange.withOpacity(0.2)),
+                                ? Colors.blue.withValues(alpha: 0.2)
+                                : Colors.orange.withValues(alpha: 0.2)),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: _analysisData != null
-                            ? Colors.green.withOpacity(0.5)
+                            ? Colors.green.withValues(alpha: 0.5)
                             : (isAnalyzed
-                                  ? Colors.blue.withOpacity(0.5)
-                                  : Colors.orange.withOpacity(0.5)),
+                                  ? Colors.blue.withValues(alpha: 0.5)
+                                  : Colors.orange.withValues(alpha: 0.5)),
                         width: 1,
                       ),
                     ),

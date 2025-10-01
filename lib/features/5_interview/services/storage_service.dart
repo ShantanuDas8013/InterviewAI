@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -26,7 +25,9 @@ class StorageService {
       final fileName = '$userId/$sessionId/${questionId}_$uuid.wav';
 
       // Upload the file
-      await _supabase.storage.from(_bucketName).uploadBinary(
+      await _supabase.storage
+          .from(_bucketName)
+          .uploadBinary(
             fileName,
             audioBytes,
             fileOptions: const FileOptions(
@@ -36,7 +37,9 @@ class StorageService {
           );
 
       // Get the public URL
-      final String audioUrl = _supabase.storage.from(_bucketName).getPublicUrl(fileName);
+      final String audioUrl = _supabase.storage
+          .from(_bucketName)
+          .getPublicUrl(fileName);
       debugPrint('Audio uploaded successfully: $audioUrl');
       return audioUrl;
     } catch (e) {
@@ -64,7 +67,9 @@ class StorageService {
       final fileName = '$userId/$sessionId/${questionId}_$uuid$extension';
 
       // Upload the file
-      await _supabase.storage.from(_bucketName).upload(
+      await _supabase.storage
+          .from(_bucketName)
+          .upload(
             fileName,
             file,
             fileOptions: FileOptions(
@@ -74,7 +79,9 @@ class StorageService {
           );
 
       // Get the public URL
-      final String audioUrl = _supabase.storage.from(_bucketName).getPublicUrl(fileName);
+      final String audioUrl = _supabase.storage
+          .from(_bucketName)
+          .getPublicUrl(fileName);
       debugPrint('Audio uploaded successfully: $audioUrl');
       return audioUrl;
     } catch (e) {
@@ -89,11 +96,13 @@ class StorageService {
       // Extract the path from the URL
       final uri = Uri.parse(audioUrl);
       final pathSegments = uri.pathSegments;
-      
+
       // The path should be something like: storage/v1/object/public/interview-audio/path/to/file.wav
       // We need to extract just the path/to/file.wav part
-      final filePath = pathSegments.sublist(pathSegments.indexOf(_bucketName) + 1).join('/');
-      
+      final filePath = pathSegments
+          .sublist(pathSegments.indexOf(_bucketName) + 1)
+          .join('/');
+
       await _supabase.storage.from(_bucketName).remove([filePath]);
       debugPrint('Audio deleted successfully: $filePath');
       return true;

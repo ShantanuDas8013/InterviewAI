@@ -103,15 +103,32 @@ class DatabaseService {
   // Fetch questions for a job role
   Future<List<InterviewQuestionModel>> fetchQuestionsForJobRole(
     String jobRoleId, {
-    int limit = 10,
+    int limit = 5,
+    String? difficultyLevel,
+    String? questionType,
   }) async {
     try {
-      final response = await _supabase
+      var query = _supabase
           .from('interview_questions')
           .select()
           .eq('job_role_id', jobRoleId)
-          .eq('is_active', true)
-          .limit(limit);
+          .eq('is_active', true);
+
+      // Add difficulty filter if specified
+      if (difficultyLevel != null) {
+        query = query.eq('difficulty_level', difficultyLevel);
+      }
+
+      // Add question type filter if specified
+      if (questionType != null) {
+        query = query.eq('question_type', questionType);
+      }
+
+      final response = await query.limit(limit);
+
+      debugPrint(
+        'Found ${(response as List).length} existing questions for job role $jobRoleId',
+      );
 
       return (response as List)
           .map((data) => InterviewQuestionModel.fromJson(data))
@@ -119,6 +136,30 @@ class DatabaseService {
     } catch (e) {
       debugPrint('Error fetching questions for job role: $e');
       return [];
+    }
+  }
+
+  // Count existing questions for a job role
+  Future<int> countQuestionsForJobRole(
+    String jobRoleId, {
+    String? difficultyLevel,
+  }) async {
+    try {
+      var query = _supabase
+          .from('interview_questions')
+          .select('id')
+          .eq('job_role_id', jobRoleId)
+          .eq('is_active', true);
+
+      if (difficultyLevel != null) {
+        query = query.eq('difficulty_level', difficultyLevel);
+      }
+
+      final response = await query;
+      return (response as List).length;
+    } catch (e) {
+      debugPrint('Error counting questions for job role: $e');
+      return 0;
     }
   }
 

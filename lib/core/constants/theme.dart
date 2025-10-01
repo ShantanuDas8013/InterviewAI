@@ -28,13 +28,13 @@ class AppTheme {
 
   // Text Colors
   static const Color textPrimaryColor = Colors.white;
-  static final Color textSecondaryColor = Colors.white.withOpacity(0.8);
-  static final Color textHintColor = Colors.white.withOpacity(0.6);
+  static final Color textSecondaryColor = Colors.white.withValues(alpha: 0.8);
+  static final Color textHintColor = Colors.white.withValues(alpha: 0.6);
 
   // Background Colors
-  static final Color cardBackgroundColor = Colors.white.withOpacity(0.05);
-  static final Color inputBackgroundColor = Colors.white.withOpacity(0.1);
-  static final Color borderColor = Colors.white.withOpacity(0.3);
+  static final Color cardBackgroundColor = Colors.white.withValues(alpha: 0.05);
+  static final Color inputBackgroundColor = Colors.white.withValues(alpha: 0.1);
+  static final Color borderColor = Colors.white.withValues(alpha: 0.3);
 
   // Border Radius
   static const double cardBorderRadius = 24.0;
@@ -58,7 +58,7 @@ class AppTheme {
   // Shadows
   static List<BoxShadow> cardShadow = [
     BoxShadow(
-      color: Colors.black.withOpacity(0.1),
+      color: Colors.black.withValues(alpha: 0.1),
       blurRadius: 20,
       offset: const Offset(0, 10),
     ),
@@ -66,7 +66,7 @@ class AppTheme {
 
   static List<BoxShadow> buttonShadow = [
     BoxShadow(
-      color: accentColor.withOpacity(0.3),
+      color: accentColor.withValues(alpha: 0.3),
       blurRadius: 15,
       offset: const Offset(0, 8),
     ),
@@ -74,7 +74,7 @@ class AppTheme {
 
   static List<BoxShadow> glowShadow = [
     BoxShadow(
-      color: Colors.purpleAccent.withOpacity(0.3),
+      color: Colors.purpleAccent.withValues(alpha: 0.3),
       blurRadius: 20,
       spreadRadius: 5,
     ),

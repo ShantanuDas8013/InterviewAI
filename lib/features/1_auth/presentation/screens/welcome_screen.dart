@@ -121,7 +121,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF7C4DFF).withOpacity(0.3),
+                color: const Color(0xFF7C4DFF).withValues(alpha: 0.3),
                 blurRadius: 30,
                 offset: const Offset(0, 15),
               ),
@@ -131,9 +131,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             margin: const EdgeInsets.all(3),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -163,10 +163,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF7C4DFF).withOpacity(0.1),
+            color: const Color(0xFF7C4DFF).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: const Color(0xFF7C4DFF).withOpacity(0.3),
+              color: const Color(0xFF7C4DFF).withValues(alpha: 0.3),
               width: 1,
             ),
           ),
@@ -191,13 +191,16 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         borderRadius: BorderRadius.circular(24),
         gradient: LinearGradient(
           colors: [
-            const Color(0xFF7C4DFF).withOpacity(0.1),
-            const Color(0xFF536DFE).withOpacity(0.1),
+            const Color(0xFF7C4DFF).withValues(alpha: 0.1),
+            const Color(0xFF536DFE).withValues(alpha: 0.1),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 1,
+        ),
       ),
       child: Stack(
         children: [
@@ -229,7 +232,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF7C4DFF).withOpacity(0.4),
+                    color: const Color(0xFF7C4DFF).withValues(alpha: 0.4),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -252,9 +255,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: color.withValues(alpha: 0.2),
         shape: BoxShape.circle,
-        border: Border.all(color: color.withOpacity(0.3), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
     );
   }
@@ -263,12 +266,15 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -292,7 +298,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               'Practice with AI-powered mock interviews, get personalized feedback, and boost your confidence.',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
                 height: 1.5,
               ),
               textAlign: TextAlign.center,
@@ -324,7 +330,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF7C4DFF).withOpacity(0.3),
+            color: const Color(0xFF7C4DFF).withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -364,9 +370,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       width: double.infinity,
       height: 56,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.2),
+          width: 1,
+        ),
       ),
       child: TextButton(
         onPressed: _navigateToRegister,
@@ -402,10 +411,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFF10B981).withOpacity(0.1),
+            color: const Color(0xFF10B981).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: const Color(0xFF10B981).withOpacity(0.3),
+              color: const Color(0xFF10B981).withValues(alpha: 0.3),
               width: 1,
             ),
           ),
@@ -421,7 +430,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               Text(
                 'AI-Powered & Secure',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
@@ -451,9 +460,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.2),
+              width: 1,
+            ),
           ),
           child: Icon(icon, color: const Color(0xFF7C4DFF), size: 24),
         ),
@@ -461,7 +473,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha: 0.8),
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),

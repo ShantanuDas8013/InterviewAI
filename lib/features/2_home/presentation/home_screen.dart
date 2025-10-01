@@ -93,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.accentColor.withOpacity(0.3),
+                    color: AppTheme.accentColor.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -138,10 +138,10 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -158,10 +158,10 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppTheme.accentColor.withOpacity(0.2),
+                  color: AppTheme.accentColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AppTheme.accentColor.withOpacity(0.3),
+                    color: AppTheme.accentColor.withValues(alpha: 0.3),
                     width: 1,
                   ),
                 ),
@@ -172,7 +172,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               onPressed: () {
-                // TODO: Implement notifications
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Notifications coming soon!')),
                 );
@@ -234,7 +233,7 @@ class _HomeScreenState extends State<HomeScreen> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppTheme.accentColor.withOpacity(0.2),
+                color: AppTheme.accentColor.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
                 border: Border.all(color: AppTheme.accentColor, width: 2),
               ),
@@ -356,26 +355,18 @@ class _HomeScreenState extends State<HomeScreen> {
               title: 'Interview History',
               subtitle: 'View past sessions',
               color: Colors.greenAccent,
-              onTap: () {
-                // TODO: Navigate to history
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('History feature coming soon!')),
-                );
-              },
+              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('History feature coming soon!')),
+              ),
             ),
             _buildFeatureCard(
               icon: Icons.analytics,
               title: 'Analytics',
               subtitle: 'Track your progress',
               color: Colors.orangeAccent,
-              onTap: () {
-                // TODO: Navigate to analytics
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Analytics feature coming soon!'),
-                  ),
-                );
-              },
+              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Analytics feature coming soon!')),
+              ),
             ),
           ],
         ),
@@ -408,7 +399,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
+                  color: color.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: color, size: 20),

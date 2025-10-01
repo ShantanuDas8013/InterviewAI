@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../features/5_interview/presentation/screens/interview_screen.dart';
 import '../features/5_interview/presentation/screens/interview_setup_screen.dart';
+import '../features/5_interview/presentation/screens/enhanced_interview_demo_screen.dart';
 import '../features/5_interview/data/models/job_role_model.dart';
 import '../core/constants/theme.dart';
 
@@ -47,7 +48,7 @@ class InterviewDemoScreen extends StatelessWidget {
                   'Test the AI-powered voice interview system with different job roles.',
                   style: TextStyle(
                     fontSize: 16,
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                     height: 1.5,
                   ),
                 ),
@@ -103,14 +104,34 @@ class InterviewDemoScreen extends StatelessWidget {
                   ),
                 ),
 
+                const SizedBox(height: 16),
+
+                _buildDemoCard(
+                  title: '🚀 Enhanced AI Interview Demo',
+                  description:
+                      'Experience the improved AssemblyAI + Gemini AI system with real-time analysis',
+                  icon: Icons.psychology,
+                  gradientColors: [Colors.purple, Colors.indigo],
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const EnhancedInterviewDemoScreen(),
+                      ),
+                    );
+                  },
+                ),
+
                 const Spacer(),
 
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
+                    color: Colors.orange.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                    border: Border.all(
+                      color: Colors.orange.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -141,25 +162,47 @@ class InterviewDemoScreen extends StatelessWidget {
     required String description,
     required IconData icon,
     required VoidCallback onTap,
+    List<Color>? gradientColors,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: gradientColors != null
+              ? null
+              : Colors.white.withValues(alpha: 0.05),
+          gradient: gradientColors != null
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: gradientColors,
+                )
+              : null,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          border: Border.all(
+            color: gradientColors != null
+                ? Colors.white.withValues(alpha: 0.3)
+                : Colors.white.withValues(alpha: 0.1),
+          ),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.accentColor.withOpacity(0.2),
+                color: gradientColors != null
+                    ? Colors.white.withValues(alpha: 0.2)
+                    : AppTheme.accentColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: AppTheme.accentColor, size: 24),
+              child: Icon(
+                icon,
+                color: gradientColors != null
+                    ? Colors.white
+                    : AppTheme.accentColor,
+                size: 24,
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -178,7 +221,7 @@ class InterviewDemoScreen extends StatelessWidget {
                   Text(
                     description,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                       fontSize: 14,
                     ),
                   ),

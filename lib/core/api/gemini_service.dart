@@ -762,4 +762,421 @@ Recommendations for your resume:
 The analysis will proceed with comprehensive guidance tailored to professional resume standards and current industry expectations.
 ''';
   }
+
+  /// Evaluate interview answer using Gemini AI for comprehensive analysis
+  ///
+  /// This method provides detailed analysis of candidate responses including:
+  /// - Technical accuracy and depth
+  /// - Communication clarity and structure
+  /// - Relevance to the question asked
+  /// - Professional competency demonstration
+  /// - Areas for improvement and feedback
+  Future<Map<String, dynamic>> evaluateInterviewAnswer({
+    required String questionText,
+    required String questionType,
+    required String userAnswer,
+    required List<String> expectedKeywords,
+    required String difficultyLevel,
+    String? idealAnswer,
+    String? evaluationCriteria,
+    String? jobTitle,
+    String? jobCategory,
+    Map<String, dynamic>? transcriptionAnalysis,
+  }) async {
+    const int maxRetries = 3;
+    const Duration baseDelay = Duration(seconds: 2);
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        debugPrint('Answer evaluation attempt $attempt of $maxRetries');
+        await initialize();
+
+        final evaluationResult = await _performAnswerEvaluation(
+          questionText: questionText,
+          questionType: questionType,
+          userAnswer: userAnswer,
+          expectedKeywords: expectedKeywords,
+          difficultyLevel: difficultyLevel,
+          idealAnswer: idealAnswer,
+          evaluationCriteria: evaluationCriteria,
+          jobTitle: jobTitle,
+          jobCategory: jobCategory,
+          transcriptionAnalysis: transcriptionAnalysis,
+        );
+
+        debugPrint(
+          'Answer evaluation completed successfully on attempt $attempt',
+        );
+        return evaluationResult;
+      } catch (e) {
+        debugPrint('Answer evaluation attempt $attempt failed: $e');
+
+        if (_isRetryableError(e) && attempt < maxRetries) {
+          final delay = Duration(
+            milliseconds: baseDelay.inMilliseconds * (1 << (attempt - 1)),
+          );
+          debugPrint('Retrying in ${delay.inSeconds} seconds...');
+          await Future.delayed(delay);
+          continue;
+        }
+
+        if (attempt == maxRetries) {
+          debugPrint('All retry attempts exhausted for answer evaluation.');
+          rethrow;
+        }
+      }
+    }
+
+    throw Exception('Answer evaluation failed after all retries');
+  }
+
+  /// Perform the actual answer evaluation with enhanced analysis
+  Future<Map<String, dynamic>> _performAnswerEvaluation({
+    required String questionText,
+    required String questionType,
+    required String userAnswer,
+    required List<String> expectedKeywords,
+    required String difficultyLevel,
+    String? idealAnswer,
+    String? evaluationCriteria,
+    String? jobTitle,
+    String? jobCategory,
+    Map<String, dynamic>? transcriptionAnalysis,
+  }) async {
+    final prompt = _buildAnswerEvaluationPrompt(
+      questionText: questionText,
+      questionType: questionType,
+      userAnswer: userAnswer,
+      expectedKeywords: expectedKeywords,
+      difficultyLevel: difficultyLevel,
+      idealAnswer: idealAnswer,
+      evaluationCriteria: evaluationCriteria,
+      jobTitle: jobTitle,
+      jobCategory: jobCategory,
+      transcriptionAnalysis: transcriptionAnalysis,
+    );
+
+    debugPrint('Sending answer evaluation request to Gemini...');
+    final content = [Content.text(prompt)];
+    final response = await _model.generateContent(content);
+    final responseText = response.text ?? '';
+
+    debugPrint('Gemini Answer Evaluation Raw Response: $responseText');
+
+    try {
+      // Clean the response text to extract valid JSON
+      String cleanJsonString = responseText.trim();
+
+      // Remove markdown code blocks if present
+      if (cleanJsonString.startsWith('```json')) {
+        cleanJsonString = cleanJsonString.replaceFirst('```json', '');
+      }
+      if (cleanJsonString.startsWith('```')) {
+        cleanJsonString = cleanJsonString.replaceFirst('```', '');
+      }
+      if (cleanJsonString.endsWith('```')) {
+        cleanJsonString = cleanJsonString.substring(
+          0,
+          cleanJsonString.length - 3,
+        );
+      }
+
+      // Find JSON boundaries
+      final jsonStart = cleanJsonString.indexOf('{');
+      final jsonEnd = cleanJsonString.lastIndexOf('}') + 1;
+
+      if (jsonStart != -1 && jsonEnd > jsonStart) {
+        cleanJsonString = cleanJsonString.substring(jsonStart, jsonEnd);
+      }
+
+      debugPrint('Cleaned JSON String for answer evaluation: $cleanJsonString');
+
+      // Parse the JSON
+      final parsedJson = jsonDecode(cleanJsonString) as Map<String, dynamic>;
+
+      // Validate and return the evaluation result
+      return _validateEvaluationData(parsedJson);
+    } catch (parseError) {
+      debugPrint(
+        'Error parsing Gemini answer evaluation JSON response: $parseError',
+      );
+      debugPrint('Raw response for debugging: $responseText');
+
+      // Return a fallback evaluation
+      return _createFallbackEvaluation(userAnswer, expectedKeywords);
+    }
+  }
+
+  /// Build the answer evaluation prompt for Gemini AI
+  String _buildAnswerEvaluationPrompt({
+    required String questionText,
+    required String questionType,
+    required String userAnswer,
+    required List<String> expectedKeywords,
+    required String difficultyLevel,
+    String? idealAnswer,
+    String? evaluationCriteria,
+    String? jobTitle,
+    String? jobCategory,
+    Map<String, dynamic>? transcriptionAnalysis,
+  }) {
+    // Extract enhanced transcription data if available
+    final geminiSummary =
+        transcriptionAnalysis?['gemini_summary'] as Map<String, dynamic>?;
+    final speechAnalysis =
+        geminiSummary?['speech_analysis'] as Map<String, dynamic>?;
+    final contentAnalysis =
+        geminiSummary?['content_analysis'] as Map<String, dynamic>?;
+    final qualityIndicators =
+        geminiSummary?['quality_indicators'] as Map<String, dynamic>?;
+    final recommendations =
+        geminiSummary?['recommendation_for_gemini'] as Map<String, dynamic>?;
+
+    // Build transcription confidence and analysis info
+    final confidenceInfo = transcriptionAnalysis != null
+        ? '''
+TRANSCRIPTION QUALITY ANALYSIS:
+- Transcription Accuracy: ${(transcriptionAnalysis['confidence'] as num?)?.toStringAsFixed(2) ?? 'N/A'}%
+- Overall Confidence: ${geminiSummary?['overall_confidence'] ?? 'Unknown'}
+- Quality Score: ${(geminiSummary?['confidence_score'] as num?)?.toStringAsFixed(2) ?? 'N/A'}'''
+        : 'No transcription analysis available';
+
+    final speechAnalysisInfo = speechAnalysis != null
+        ? '''
+SPEECH DELIVERY ANALYSIS:
+- Speaking Pace: ${(speechAnalysis['words_per_minute'] as num?)?.toStringAsFixed(1) ?? 'N/A'} words/minute
+- Total Words: ${speechAnalysis['total_words'] ?? 'N/A'}
+- Sentence Count: ${speechAnalysis['sentence_count'] ?? 'N/A'}
+- Hesitation Count: ${speechAnalysis['hesitation_count'] ?? 'N/A'}
+- Filler Words: ${speechAnalysis['filler_word_count'] ?? 'N/A'}'''
+        : '';
+
+    final contentAnalysisInfo = contentAnalysis != null
+        ? '''
+CONTENT ANALYSIS:
+- Answer Coherence: ${(contentAnalysis['coherence_score'] as num?)?.toStringAsFixed(2) ?? 'N/A'}
+- Question Relevance: ${(contentAnalysis['relevance_score'] as num?)?.toStringAsFixed(2) ?? 'N/A'}
+- Technical Term Density: ${(contentAnalysis['technical_term_density'] as num?)?.toStringAsFixed(3) ?? 'N/A'}
+- Keyword Matches: ${contentAnalysis['keyword_matches'] ?? 'N/A'}'''
+        : '';
+
+    final qualityInfo = qualityIndicators != null
+        ? '''
+QUALITY INDICATORS:
+- Speech Clarity: ${(qualityIndicators['speech_clarity'] as num?)?.toStringAsFixed(2) ?? 'N/A'}
+- Technical Competency: ${(qualityIndicators['technical_competency'] as num?)?.toStringAsFixed(2) ?? 'N/A'}
+- Communication Fluency: ${(qualityIndicators['communication_fluency'] as num?)?.toStringAsFixed(2) ?? 'N/A'}'''
+        : '';
+
+    final evaluationGuidance = recommendations != null
+        ? '''
+EVALUATION GUIDANCE:
+Focus Areas: ${(recommendations['evaluation_focus'] as List<dynamic>?)?.join(', ') ?? 'Standard evaluation'}
+Attention Points: ${(recommendations['attention_points'] as List<dynamic>?)?.join(', ') ?? 'None'}'''
+        : '';
+
+    return '''
+You are an expert interview assessor with 15+ years of experience in evaluating candidate responses across various industries. You have access to advanced speech-to-text analysis data that provides insights into both the content and delivery of the candidate's response. Use this data to provide a comprehensive and accurate evaluation.
+
+INTERVIEW CONTEXT:
+- Position: ${jobTitle ?? 'Not specified'}
+- Category: ${jobCategory ?? 'General'}
+- Question Type: $questionType
+- Difficulty Level: $difficultyLevel
+- Question: "$questionText"
+
+CANDIDATE RESPONSE:
+"$userAnswer"
+
+EVALUATION CRITERIA:
+- Expected Keywords: ${expectedKeywords.join(', ')}
+${idealAnswer != null ? '- Ideal Answer: "$idealAnswer"' : ''}
+${evaluationCriteria != null ? '- Specific Criteria: $evaluationCriteria' : ''}
+
+$confidenceInfo
+
+$speechAnalysisInfo
+
+$contentAnalysisInfo
+
+$qualityInfo
+
+$evaluationGuidance
+
+COMPREHENSIVE EVALUATION REQUIREMENTS:
+1. Technical Accuracy (0-10): Assess correctness, depth, and precision of technical knowledge
+2. Communication Clarity (0-10): Evaluate clarity, structure, and effectiveness of communication
+3. Relevance Score (0-10): Measure how directly the answer addresses the question
+4. Completeness (0-10): Assess coverage of all important aspects and thoroughness
+5. Professional Competency (0-10): Evaluate demonstration of relevant skills and experience
+
+ANALYSIS CONSIDERATIONS:
+- Use transcription confidence to adjust evaluation reliability
+- Consider speech delivery metrics for communication assessment
+- Factor in technical term usage for competency evaluation
+- Account for hesitations and filler words in fluency scoring
+- Use coherence scores to validate logical structure
+- Apply relevance metrics to ensure question alignment
+
+EVALUATION ADJUSTMENTS BASED ON TRANSCRIPTION DATA:
+- If transcription confidence is low (<70%), note potential misinterpretations
+- If speaking pace is very fast (>220 wpm) or slow (<80 wpm), consider communication impact
+- If hesitation count is high (>5), factor into confidence assessment
+- If technical term density is low for technical roles, adjust competency scoring
+- If coherence score is low (<0.6), focus on content extraction over structure
+
+IMPORTANT: Return ONLY a valid JSON response with no additional text or markdown formatting.
+
+Expected JSON format:
+{
+  "overall_score": 8.5,
+  "technical_accuracy": 8.0,
+  "communication_clarity": 9.0,
+  "relevance_score": 8.5,
+  "completeness": 7.5,
+  "professional_competency": 8.0,
+  "transcription_reliability": 0.95,
+  "speech_delivery_score": 8.2,
+  "keywords_mentioned": ["keyword1", "keyword2"],
+  "missing_keywords": ["keyword3", "keyword4"],
+  "strengths": [
+    "Clear communication with excellent structure",
+    "Strong technical knowledge demonstrated",
+    "Effective use of specific examples and evidence",
+    "Confident delivery with minimal hesitations"
+  ],
+  "areas_for_improvement": [
+    "Could provide more quantifiable results",
+    "Consider deeper technical exploration of edge cases"
+  ],
+  "detailed_feedback": "The candidate provided a well-structured and confident response demonstrating strong technical knowledge. The answer was delivered clearly with good pacing and minimal hesitations, indicating strong communication skills. The content directly addressed the question with relevant technical details.",
+  "ideal_answer_comparison": "Response covers 85% of ideal answer points with good depth and relevant examples.",
+  "confidence_assessment": "High confidence demonstrated through clear delivery, appropriate technical terminology, and comprehensive coverage of the topic.",
+  "transcription_notes": "High quality transcription with excellent accuracy enables reliable evaluation.",
+  "communication_analysis": "Excellent speaking pace and minimal filler words indicate strong verbal communication skills.",
+  "technical_depth_analysis": "Appropriate use of technical terminology and concepts for the role level.",
+  "recommendation": "Strong candidate with excellent communication skills and solid technical foundation. Ready for next interview stage."
+}
+
+Provide a thorough, fair, and constructive evaluation that leverages the enhanced transcription analysis for maximum accuracy.
+''';
+  }
+
+  /// Validate and enhance evaluation data
+  Map<String, dynamic> _validateEvaluationData(Map<String, dynamic> data) {
+    return {
+      'overall_score': _validateScore(data['overall_score']),
+      'technical_accuracy': _validateScore(data['technical_accuracy']),
+      'communication_clarity': _validateScore(data['communication_clarity']),
+      'relevance_score': _validateScore(data['relevance_score']),
+      'completeness': _validateScore(data['completeness']),
+      'professional_competency': _validateScore(
+        data['professional_competency'],
+      ),
+      'transcription_reliability': _validateScore(
+        data['transcription_reliability'],
+      ),
+      'speech_delivery_score': _validateScore(data['speech_delivery_score']),
+      'keywords_mentioned': _ensureList(data['keywords_mentioned']),
+      'missing_keywords': _ensureList(data['missing_keywords']),
+      'strengths': _ensureList(data['strengths']),
+      'areas_for_improvement': _ensureList(data['areas_for_improvement']),
+      'detailed_feedback':
+          data['detailed_feedback']?.toString() ??
+          'Good response with room for improvement.',
+      'ideal_answer_comparison':
+          data['ideal_answer_comparison']?.toString() ??
+          'Response addresses the key points adequately.',
+      'confidence_assessment':
+          data['confidence_assessment']?.toString() ??
+          'Moderate confidence demonstrated.',
+      'transcription_notes':
+          data['transcription_notes']?.toString() ??
+          'Transcription quality is adequate for evaluation.',
+      'communication_analysis':
+          data['communication_analysis']?.toString() ??
+          'Communication skills are appropriate for the role.',
+      'technical_depth_analysis':
+          data['technical_depth_analysis']?.toString() ??
+          'Technical knowledge demonstrates basic understanding.',
+      'recommendation':
+          data['recommendation']?.toString() ??
+          'Continue practicing to enhance interview skills.',
+    };
+  }
+
+  /// Validate score values to ensure they are within 0-10 range
+  double _validateScore(dynamic score) {
+    if (score == null) return 5.0;
+
+    double parsedScore = 5.0;
+    if (score is num) {
+      parsedScore = score.toDouble();
+    } else if (score is String) {
+      parsedScore = double.tryParse(score) ?? 5.0;
+    }
+
+    // Ensure score is within valid range
+    return parsedScore.clamp(0.0, 10.0);
+  }
+
+  /// Create fallback evaluation when AI analysis fails
+  Map<String, dynamic> _createFallbackEvaluation(
+    String userAnswer,
+    List<String> expectedKeywords,
+  ) {
+    final answerLength = userAnswer.trim().length;
+    final hasContent = answerLength > 20;
+
+    // Basic keyword matching
+    final mentionedKeywords = <String>[];
+    final missingKeywords = <String>[];
+
+    for (final keyword in expectedKeywords) {
+      if (userAnswer.toLowerCase().contains(keyword.toLowerCase())) {
+        mentionedKeywords.add(keyword);
+      } else {
+        missingKeywords.add(keyword);
+      }
+    }
+
+    final keywordScore = expectedKeywords.isEmpty
+        ? 7.0
+        : (mentionedKeywords.length / expectedKeywords.length) * 10.0;
+
+    final baseScore = hasContent ? 6.0 : 3.0;
+    final adjustedScore = ((baseScore + keywordScore) / 2).clamp(0.0, 10.0);
+
+    return {
+      'overall_score': adjustedScore,
+      'technical_accuracy': adjustedScore,
+      'communication_clarity': hasContent ? 7.0 : 4.0,
+      'relevance_score': keywordScore,
+      'completeness': hasContent ? 6.0 : 3.0,
+      'professional_competency': adjustedScore,
+      'keywords_mentioned': mentionedKeywords,
+      'missing_keywords': missingKeywords,
+      'strengths': hasContent
+          ? [
+              'Provided a response to the question',
+              'Used some relevant terminology',
+            ]
+          : ['Attempted to answer the question'],
+      'areas_for_improvement': [
+        'Consider providing more detailed explanations',
+        'Include specific examples and evidence',
+        'Address all aspects of the question',
+      ],
+      'detailed_feedback': hasContent
+          ? 'The response shows basic understanding but could be enhanced with more detail and specific examples.'
+          : 'The response is too brief and lacks sufficient detail. Consider expanding your answer with more information.',
+      'ideal_answer_comparison':
+          'The response addresses some key points but could be more comprehensive.',
+      'confidence_assessment': hasContent
+          ? 'Moderate confidence'
+          : 'Low confidence',
+      'recommendation':
+          'Practice providing more detailed and structured responses to interview questions.',
+    };
+  }
 }

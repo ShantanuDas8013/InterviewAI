@@ -202,7 +202,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
-                          color: AppTheme.accentColor.withOpacity(0.2),
+                          color: AppTheme.accentColor.withValues(alpha: 0.2),
                           child: const Icon(
                             Icons.person,
                             size: 60,
@@ -212,7 +212,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       },
                     )
                   : Container(
-                      color: AppTheme.accentColor.withOpacity(0.2),
+                      color: AppTheme.accentColor.withValues(alpha: 0.2),
                       child: const Icon(
                         Icons.person,
                         size: 60,
@@ -290,7 +290,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               filled: true,
               fillColor: enabled
                   ? AppTheme.cardBackgroundColor
-                  : AppTheme.cardBackgroundColor.withOpacity(0.5),
+                  : AppTheme.cardBackgroundColor.withValues(alpha: 0.5),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: AppTheme.borderColor, width: 1),
@@ -306,7 +306,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               disabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: AppTheme.borderColor.withOpacity(0.5),
+                  color: AppTheme.borderColor.withValues(alpha: 0.5),
                   width: 1,
                 ),
               ),
@@ -435,7 +435,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         const SizedBox(height: 32),
 
                         // Save Button
-                        Container(
+                        SizedBox(
                           width: double.infinity,
                           height: 56,
                           child: ElevatedButton(

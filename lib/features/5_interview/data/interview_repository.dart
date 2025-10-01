@@ -26,7 +26,7 @@ class InterviewRepository {
     required String jobRoleId,
     String? resumeId,
     String? sessionName,
-    int totalQuestions = 10,
+    int totalQuestions = 5,
     String difficultyLevel = 'medium',
   }) async {
     try {

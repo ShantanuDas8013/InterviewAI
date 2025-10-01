@@ -110,10 +110,12 @@ class _JobRoleSelectorState extends State<JobRoleSelector> {
                       widget.onRoleSelected(role);
                     },
                     selected: isSelected,
-                    selectedTileColor: AppTheme.accentColor.withOpacity(0.1),
+                    selectedTileColor: AppTheme.accentColor.withValues(
+                      alpha: 0.1,
+                    ),
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ),
         ),

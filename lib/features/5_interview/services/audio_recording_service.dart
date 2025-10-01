@@ -115,7 +115,7 @@ class AudioRecordingService {
         if (await file.exists()) {
           final fileSize = await file.length();
           debugPrint(
-            'Audio recording stopped: $recordingPath (${fileSize} bytes)',
+            'Audio recording stopped: $recordingPath ($fileSize bytes)',
           );
 
           // Validate minimum file size (at least 1KB to ensure we have actual audio)

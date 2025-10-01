@@ -127,7 +127,7 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
         Text(
           'Profile',
           style: TextStyle(
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.white.withValues(alpha: 0.9),
             fontSize: 18,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.5,
@@ -138,10 +138,10 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -161,12 +161,12 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           border: Border.all(
-            color: Colors.white.withOpacity(0.3),
+            color: Colors.white.withValues(alpha: 0.3),
             width: 2,
           ), // Reduced border width
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               blurRadius: 15, // Reduced blur
               offset: const Offset(0, 6), // Reduced offset
             ),
@@ -200,8 +200,8 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppTheme.accentColor.withOpacity(0.8),
-            AppTheme.secondaryAccentColor.withOpacity(0.8),
+            AppTheme.accentColor.withValues(alpha: 0.8),
+            AppTheme.secondaryAccentColor.withValues(alpha: 0.8),
           ],
         ),
       ),
@@ -218,8 +218,8 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppTheme.accentColor.withOpacity(0.3),
-            AppTheme.secondaryAccentColor.withOpacity(0.3),
+            AppTheme.accentColor.withValues(alpha: 0.3),
+            AppTheme.secondaryAccentColor.withValues(alpha: 0.3),
           ],
         ),
       ),
@@ -254,14 +254,17 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
             vertical: 5,
           ), // Reduced padding
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
+            color: Colors.white.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(16), // Reduced border radius
-            border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.3),
+              width: 1,
+            ),
           ),
           child: Text(
             _supabase.auth.currentUser?.email ?? '',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
               fontSize: 11, // Reduced font size
               fontWeight: FontWeight.w500,
             ),
@@ -397,18 +400,18 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
-          splashColor: color.withOpacity(0.1),
-          highlightColor: color.withOpacity(0.05),
+          splashColor: color.withValues(alpha: 0.1),
+          highlightColor: color.withValues(alpha: 0.05),
           child: Container(
             padding: const EdgeInsets.symmetric(
               vertical: 14,
               horizontal: 18,
             ), // Reduced padding
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
+              color: Colors.white.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withValues(alpha: 0.1),
                 width: 1,
               ),
             ),
@@ -418,11 +421,14 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
                   width: 44, // Reduced size
                   height: 44, // Reduced size
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
+                    color: color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(
                       12,
                     ), // Reduced border radius
-                    border: Border.all(color: color.withOpacity(0.3), width: 1),
+                    border: Border.all(
+                      color: color.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
                   ),
                   child: Icon(
                     icon,
@@ -448,7 +454,7 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
                       Text(
                         subtitle,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withValues(alpha: 0.7),
                           fontSize: 11, // Reduced font size
                           fontWeight: FontWeight.w400,
                           letterSpacing: 0.1,
@@ -461,14 +467,14 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
                   Container(
                     padding: const EdgeInsets.all(5), // Reduced padding
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(
                         7,
                       ), // Reduced border radius
                     ),
                     child: Icon(
                       Icons.arrow_forward_ios,
-                      color: Colors.white.withOpacity(0.6),
+                      color: Colors.white.withValues(alpha: 0.6),
                       size: 12, // Reduced icon size
                     ),
                   ),
@@ -484,9 +490,9 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.1),
+        color: Colors.red.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.red.withOpacity(0.3), width: 1),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3), width: 1),
       ),
       child: _buildMenuItem(
         icon: Icons.logout,

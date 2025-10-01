@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -279,7 +278,7 @@ class ResumeService {
         }
 
         httpClient.close();
-        debugPrint('PDF download completed: ${totalBytes} bytes');
+        debugPrint('PDF download completed: $totalBytes bytes');
 
         // Convert to Uint8List and extract text
         final uint8Bytes = Uint8List.fromList(bytes);

@@ -15,9 +15,9 @@ class AnalysisResultScreen extends StatefulWidget {
     this.resumeFileName,
     this.resumeId,
   }) : assert(
-          (analysisData != null && resumeFileName != null) || resumeId != null,
-          'Either provide both analysisData and resumeFileName, or provide resumeId',
-        );
+         (analysisData != null && resumeFileName != null) || resumeId != null,
+         'Either provide both analysisData and resumeFileName, or provide resumeId',
+       );
 
   @override
   State<AnalysisResultScreen> createState() => _AnalysisResultScreenState();
@@ -31,10 +31,10 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _progressAnimation;
-  
+
   final ResumeService _resumeService = ResumeService();
   final SupabaseClient _supabase = Supabase.instance.client;
-  
+
   Map<String, dynamic>? _analysisData;
   String? _resumeFileName;
   bool _isLoading = false;
@@ -57,23 +57,25 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
       });
       return;
     }
-    
+
     // Otherwise, load from database using resumeId
     if (widget.resumeId != null) {
       setState(() {
         _isLoading = true;
         _errorMessage = null;
       });
-      
+
       try {
         // Get resume analysis from database
-        final analysis = await _resumeService.getResumeAnalysis(widget.resumeId!);
-        
+        final analysis = await _resumeService.getResumeAnalysis(
+          widget.resumeId!,
+        );
+
         // Get resume details to get the file name
         final user = _supabase.auth.currentUser;
         if (user != null) {
           final resume = await _resumeService.getCurrentResume();
-          
+
           setState(() {
             _analysisData = analysis;
             _resumeFileName = resume?['file_name'] ?? 'Resume';
@@ -148,7 +150,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
       );
       return;
     }
-    
+
     try {
       // Show loading dialog
       showDialog(
@@ -285,7 +287,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.arrow_back, size: 20),
@@ -297,7 +299,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
             icon: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.download, size: 20),
@@ -313,10 +315,10 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
         child: _isLoading
             ? _buildLoadingView()
             : _errorMessage != null
-                ? _buildErrorView()
-                : _analysisData == null
-                    ? _buildNoDataView()
-                    : _buildAnalysisContent(),
+            ? _buildErrorView()
+            : _analysisData == null
+            ? _buildNoDataView()
+            : _buildAnalysisContent(),
       ),
     );
   }
@@ -349,11 +351,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              color: Colors.red[300],
-              size: 60,
-            ),
+            Icon(Icons.error_outline, color: Colors.red[300], size: 60),
             const SizedBox(height: 20),
             Text(
               'Error Loading Analysis',
@@ -383,8 +381,13 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.accentColor,
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 30,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
               ),
               child: const Text('Try Again'),
             ),
@@ -401,11 +404,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.search_off,
-              color: Colors.amber[300],
-              size: 60,
-            ),
+            Icon(Icons.search_off, color: Colors.amber[300], size: 60),
             const SizedBox(height: 20),
             Text(
               'No Analysis Data Found',
@@ -429,8 +428,13 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.accentColor,
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 30,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
               ),
               child: const Text('Go Back'),
             ),
@@ -504,7 +508,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.accentColor.withOpacity(0.3),
+                      color: AppTheme.accentColor.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -576,7 +580,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
           const SizedBox(height: 24),
           // Circular Progress Indicator
           Center(
-            child: Container(
+            child: SizedBox(
               width: 160,
               height: 160,
               child: Stack(
@@ -592,13 +596,13 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          scoreColor.withOpacity(0.1),
-                          scoreColor.withOpacity(0.05),
+                          scoreColor.withValues(alpha: 0.1),
+                          scoreColor.withValues(alpha: 0.05),
                         ],
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: scoreColor.withOpacity(0.2),
+                          color: scoreColor.withValues(alpha: 0.2),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -615,7 +619,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
                         child: CircularProgressIndicator(
                           value: (score / 10.0) * _progressAnimation.value,
                           strokeWidth: 8,
-                          backgroundColor: scoreColor.withOpacity(0.2),
+                          backgroundColor: scoreColor.withValues(alpha: 0.2),
                           valueColor: AlwaysStoppedAnimation<Color>(scoreColor),
                           strokeCap: StrokeCap.round,
                         ),
@@ -660,7 +664,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
                       height: 8,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: scoreColor.withOpacity(0.7),
+                        color: scoreColor.withValues(alpha: 0.7),
                       ),
                     ),
                   ),
@@ -672,7 +676,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
                       height: 6,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: scoreColor.withOpacity(0.5),
+                        color: scoreColor.withValues(alpha: 0.5),
                       ),
                     ),
                   ),
@@ -927,10 +931,10 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.accentColor.withOpacity(0.1),
+                color: AppTheme.accentColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: AppTheme.accentColor.withOpacity(0.2),
+                  color: AppTheme.accentColor.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
@@ -983,7 +987,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
+                  color: color.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 20),
@@ -1032,9 +1036,12 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: color.withOpacity(0.3), width: 1),
+                    border: Border.all(
+                      color: color.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
                   ),
                   child: Text(
                     skill,
@@ -1059,10 +1066,12 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen>
   }
 
   String _getScoreMessage(double score) {
-    if (score >= 8.0)
+    if (score >= 8.0) {
       return 'Excellent! Your resume is well-crafted and professional.';
-    if (score >= 6.0)
+    }
+    if (score >= 6.0) {
       return 'Good! Your resume has potential with some improvements.';
+    }
     return 'Your resume needs significant improvements to be competitive.';
   }
 }

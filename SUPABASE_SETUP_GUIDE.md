@@ -145,7 +145,7 @@ CREATE TABLE public.interview_sessions (
   started_at TIMESTAMP WITH TIME ZONE,
   completed_at TIMESTAMP WITH TIME ZONE,
   duration_seconds INTEGER,
-  total_questions INTEGER DEFAULT 10,
+  total_questions INTEGER DEFAULT 5,
   questions_answered INTEGER DEFAULT 0,
   difficulty_level VARCHAR(20) DEFAULT 'medium' CHECK (difficulty_level IN ('easy', 'medium', 'hard', 'mixed')),
   overall_score DECIMAL(3,2) CHECK (overall_score >= 0 AND overall_score <= 10),
@@ -450,7 +450,7 @@ INSERT INTO public.job_roles (title, category, description, required_skills, ind
 -- Insert app settings
 INSERT INTO public.app_settings (setting_key, setting_value, description) VALUES
 ('max_interview_duration', '"3600"', 'Maximum interview duration in seconds'),
-('default_questions_per_interview', '"10"', 'Default number of questions per interview session'),
+('default_questions_per_interview', '"5"', 'Default number of questions per interview session'),
 ('gemini_api_timeout', '"30"', 'Gemini API timeout in seconds'),
 ('max_resume_size_mb', '"10"', 'Maximum resume file size in MB'),
 ('supported_audio_formats', '["wav", "mp3", "m4a"]', 'Supported audio formats for interview responses');

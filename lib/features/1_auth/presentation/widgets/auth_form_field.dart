@@ -109,7 +109,7 @@ class AuthFormField extends StatelessWidget {
             disabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppTheme.inputBorderRadius),
               borderSide: BorderSide(
-                color: AppTheme.borderColor.withOpacity(0.5),
+                color: AppTheme.borderColor.withValues(alpha: 0.5),
               ),
             ),
             errorStyle: const TextStyle(color: Colors.red, fontSize: 12),
@@ -140,7 +140,7 @@ class PasswordStrengthIndicator extends StatelessWidget {
             Expanded(
               child: LinearProgressIndicator(
                 value: strength / 4,
-                backgroundColor: Colors.grey.withOpacity(0.3),
+                backgroundColor: Colors.grey.withValues(alpha: 0.3),
                 valueColor: AlwaysStoppedAnimation<Color>(strengthColor),
                 minHeight: 4,
               ),

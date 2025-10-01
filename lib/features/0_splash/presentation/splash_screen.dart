@@ -32,24 +32,31 @@ class _SplashScreenState extends State<SplashScreen> {
       // Wait for minimum splash time to complete
       await splashTimer;
 
-      if (mounted) {
-        // Navigate based on authentication status
-        if (currentUser != null) {
-          // User is authenticated, go to home
-          Navigator.pushReplacementNamed(context, '/home');
-        } else {
-          // User is not authenticated, go to welcome
-          Navigator.pushReplacementNamed(context, '/welcome');
+      // Use post-frame callback to ensure navigation happens after current frame
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          // Navigate based on authentication status
+          if (currentUser != null) {
+            // User is authenticated, go to home
+            Navigator.pushReplacementNamed(context, '/home');
+          } else {
+            // User is not authenticated, go to welcome
+            Navigator.pushReplacementNamed(context, '/welcome');
+          }
         }
-      }
+      });
     } catch (e) {
       // Handle initialization errors
       debugPrint('Splash initialization error: $e');
       if (mounted) {
         // Wait minimum time even on error for better UX
         await Future.delayed(const Duration(seconds: 2));
-        // Navigate to welcome screen on error
-        Navigator.pushReplacementNamed(context, '/welcome');
+        // Use post-frame callback for error navigation too
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, '/welcome');
+          }
+        });
       }
     }
   }
@@ -172,7 +179,7 @@ class _AnimatedSplashUIState extends State<AnimatedSplashUI>
 
         return Transform.scale(
           scale: scale,
-          child: Container(
+          child: SizedBox(
             width: 140,
             height: 140,
             child: Stack(
@@ -192,14 +199,14 @@ class _AnimatedSplashUIState extends State<AnimatedSplashUI>
                   height: 100,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppTheme.accentColor.withOpacity(0.2),
+                    color: AppTheme.accentColor.withValues(alpha: 0.2),
                     border: Border.all(
-                      color: AppTheme.textPrimaryColor.withOpacity(0.3),
+                      color: AppTheme.textPrimaryColor.withValues(alpha: 0.3),
                       width: 2,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.accentColor.withOpacity(0.3),
+                        color: AppTheme.accentColor.withValues(alpha: 0.3),
                         blurRadius: 20,
                         spreadRadius: 5,
                       ),
@@ -315,11 +322,11 @@ class _AnimatedSplashUIState extends State<AnimatedSplashUI>
         width: 12,
         height: 12,
         decoration: BoxDecoration(
-          color: colors[index].withOpacity(opacity),
+          color: colors[index].withValues(alpha: opacity),
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: colors[index].withOpacity(0.5),
+              color: colors[index].withValues(alpha: 0.5),
               blurRadius: 8,
               spreadRadius: 2,
             ),
@@ -374,13 +381,13 @@ class _WaveRingsPainter extends CustomPainter {
 
       if (opacity > 0.1) {
         final paint = Paint()
-          ..color = color.withOpacity(opacity)
+          ..color = color.withValues(alpha: opacity)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3.0 * (1.0 - waveProgress);
 
         // Add glow effect
         final glowPaint = Paint()
-          ..color = color.withOpacity(opacity * 0.3)
+          ..color = color.withValues(alpha: opacity * 0.3)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 6.0 * (1.0 - waveProgress)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
