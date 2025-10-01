@@ -389,6 +389,8 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
     required Color color,
     required VoidCallback onTap,
     bool showArrow = true,
+    bool showBorder = true,
+    double horizontalPadding = 18.0,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(
@@ -403,17 +405,22 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
           splashColor: color.withValues(alpha: 0.1),
           highlightColor: color.withValues(alpha: 0.05),
           child: Container(
-            padding: const EdgeInsets.symmetric(
+            padding: EdgeInsets.symmetric(
               vertical: 14,
-              horizontal: 18,
-            ), // Reduced padding
+              horizontal: horizontalPadding,
+            ),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
+              // MODIFIED LINE: Makes background transparent when showBorder is false
+              color: showBorder
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.1),
-                width: 1,
-              ),
+              border: showBorder
+                  ? Border.all(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      width: 1,
+                    )
+                  : null,
             ),
             child: Row(
               children: [
@@ -500,6 +507,8 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
         subtitle: 'Logout from app',
         color: Colors.red.shade400,
         showArrow: false,
+        showBorder: false,
+        horizontalPadding: 12.0, // Reduced padding to shift content left
         onTap: () {
           Navigator.pop(context);
           _showLogoutConfirmation();

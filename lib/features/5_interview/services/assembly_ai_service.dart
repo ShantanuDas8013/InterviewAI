@@ -181,8 +181,6 @@ class AssemblyAiService {
         'audio_url': uploadUrl,
 
         // Core transcription settings optimized for interview accuracy
-        'language_detection': true, // Automatic language detection
-        'language_confidence_threshold': 0.7, // Higher threshold for accuracy
         'punctuate': true, // Add punctuation for better readability
         'format_text': true, // Format text with proper capitalization
         'dual_channel': false, // Single channel for interview audio
@@ -198,10 +196,10 @@ class AssemblyAiService {
         'entity_detection':
             true, // Detect technical terms, companies, technologies
         'iab_categories': true, // Categorize content for topic analysis
-        'content_safety': true, // Detect inappropriate content
-        'topic_detection': true, // Identify discussion topics
-        // Interview-specific optimizations for maximum accuracy
-        'boost_param': 'high', // Highest accuracy mode available
+        'content_safety_labels': {
+          'confidence_threshold': 0.6,
+        }, // Detect inappropriate content
+        // Interview-specific optimizations
         'redact_pii':
             true, // Protect personal information while preserving context
         'redact_pii_policies': [
@@ -216,19 +214,11 @@ class AssemblyAiService {
         // Enhanced vocabulary boosting for technical interviews
         'word_boost': wordBoostList,
 
-        // Speech model and quality settings
-        'speech_model': 'best', // Use the most accurate model available
+        // Language setting
         'language_code': 'en', // Optimize for English interviews
         // Advanced features for detailed analysis
         'auto_chapters': false, // Not needed for single questions
         'summarization': false, // We'll handle summarization with Gemini
-        // Audio processing optimizations
-        'audio_start_from': 0, // Process entire audio
-        'audio_end_at': null, // Process until end
-        'speed_boost': false, // Prioritize accuracy over speed
-        // Quality thresholds
-        'confidence_threshold': 0.6, // Minimum confidence for word inclusion
-        'speech_threshold': 0.5, // Threshold for speech detection
       });
 
       final response = await http.post(
