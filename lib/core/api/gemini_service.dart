@@ -383,6 +383,120 @@ RESPONSE FORMAT: Return ONLY the JSON object above with your analysis. Do not in
     };
   }
 
+  /// Get holistic interview summary by analyzing all answers together
+  Future<Map<String, dynamic>> getInterviewSummary({
+    required List<Map<String, dynamic>> transcript,
+    required String jobTitle,
+  }) async {
+    try {
+      await initialize();
+
+      // Build the complete interview transcript
+      final transcriptText = StringBuffer();
+      for (var i = 0; i < transcript.length; i++) {
+        final item = transcript[i];
+        final questionText = item['question']['question_text'];
+        final answerText = item['answer_text'];
+        transcriptText.writeln('Q${i + 1}: $questionText');
+        transcriptText.writeln('A${i + 1}: $answerText');
+        transcriptText.writeln();
+      }
+
+      // Create the evaluation prompt
+      final prompt =
+          '''
+You are an expert technical interviewer evaluating a complete interview session for a $jobTitle position.
+
+Please analyze the following complete interview transcript and provide a holistic evaluation.
+
+INTERVIEW TRANSCRIPT:
+$transcriptText
+
+EVALUATION REQUIREMENTS:
+Provide a comprehensive assessment that includes:
+
+1. OVERALL PERFORMANCE SCORE (0-100): Rate the candidate's overall interview performance
+2. TECHNICAL COMPETENCY SCORE (0-100): Assess technical knowledge and problem-solving ability
+3. COMMUNICATION SCORE (0-100): Evaluate clarity, articulation, and communication skills
+4. PROBLEM-SOLVING SCORE (0-100): Rate analytical thinking and approach to problems
+5. CONFIDENCE SCORE (0-100): Assess confidence level and professionalism
+6. STRENGTHS ANALYSIS: Identify key strengths demonstrated across all answers
+7. AREAS FOR IMPROVEMENT: Highlight specific areas needing improvement
+8. AI SUMMARY: Provide a comprehensive 2-3 paragraph summary of the interview performance
+
+IMPORTANT: Return ONLY valid JSON in this exact format (no markdown, no extra text):
+
+{
+  "overall_score": 85.5,
+  "technical_score": 82.0,
+  "communication_score": 88.5,
+  "problem_solving_score": 80.0,
+  "confidence_score": 87.0,
+  "strengths_analysis": ["Strength 1 with specific examples", "Strength 2 with details"],
+  "areas_for_improvement": ["Area 1 with actionable advice", "Area 2 with suggestions"],
+  "ai_summary": "Comprehensive 2-3 paragraph summary analyzing overall performance, key highlights, areas of concern, and final recommendations."
+}
+''';
+
+      final content = [Content.text(prompt)];
+      final response = await _model.generateContent(content);
+      final responseText = response.text ?? '';
+
+      debugPrint('Gemini Interview Summary Response: $responseText');
+
+      // Parse the JSON response
+      String cleanJsonString = responseText.trim();
+
+      // Remove markdown code blocks if present
+      if (cleanJsonString.startsWith('```json')) {
+        cleanJsonString = cleanJsonString.replaceFirst('```json', '');
+      }
+      if (cleanJsonString.startsWith('```')) {
+        cleanJsonString = cleanJsonString.replaceFirst('```', '');
+      }
+      if (cleanJsonString.endsWith('```')) {
+        cleanJsonString = cleanJsonString.substring(
+          0,
+          cleanJsonString.length - 3,
+        );
+      }
+
+      // Find JSON boundaries
+      final jsonStart = cleanJsonString.indexOf('{');
+      final jsonEnd = cleanJsonString.lastIndexOf('}') + 1;
+
+      if (jsonStart != -1 && jsonEnd > jsonStart) {
+        cleanJsonString = cleanJsonString.substring(jsonStart, jsonEnd);
+      }
+
+      final parsedJson = jsonDecode(cleanJsonString) as Map<String, dynamic>;
+
+      // Validate and return the summary
+      return {
+        'overall_score': _ensureDouble(parsedJson['overall_score'], 75.0),
+        'technical_score': _ensureDouble(parsedJson['technical_score'], 75.0),
+        'communication_score': _ensureDouble(
+          parsedJson['communication_score'],
+          75.0,
+        ),
+        'problem_solving_score': _ensureDouble(
+          parsedJson['problem_solving_score'],
+          75.0,
+        ),
+        'confidence_score': _ensureDouble(parsedJson['confidence_score'], 75.0),
+        'strengths_analysis': _ensureList(parsedJson['strengths_analysis']),
+        'areas_for_improvement': _ensureList(
+          parsedJson['areas_for_improvement'],
+        ),
+        'ai_summary':
+            parsedJson['ai_summary']?.toString() ?? 'Summary not available',
+      };
+    } catch (e) {
+      debugPrint('Error generating interview summary: $e');
+      rethrow;
+    }
+  }
+
   /// Extract text content from PDF file
   Future<String> extractTextFromPdf(File pdfFile) async {
     try {
@@ -1060,54 +1174,6 @@ Expected JSON format:
 
 Provide a thorough, fair, and constructive evaluation that leverages the enhanced transcription analysis for maximum accuracy.
 ''';
-  }
-
-  /// Generates a comprehensive summary and evaluation of a full interview transcript
-  Future<Map<String, dynamic>> getInterviewSummary({
-    required List<Map<String, dynamic>> transcript,
-    required String jobTitle,
-  }) async {
-    await initialize();
-
-    // 1. Construct the prompt
-    final promptBuffer = StringBuffer(
-      'You are an expert technical recruiter and interview analyst. Based on the following interview transcript, please provide a detailed, holistic summary of the candidate\'s performance. Evaluate their strengths, weaknesses, and overall suitability for the role of a $jobTitle.\n\n',
-    );
-
-    for (final item in transcript) {
-      final question = item['question']['question_text'];
-      final answer = item['answer_text'];
-      promptBuffer.writeln('Question: $question');
-      promptBuffer.writeln('Candidate\'s Answer: $answer\n');
-    }
-
-    promptBuffer.writeln(
-      'Please provide your analysis in a valid JSON format with the following structure: { "overall_score": 8.5, "technical_score": 8.0, "communication_score": 9.0, "problem_solving_score": 8.0, "confidence_score": 9.0, "strengths_analysis": "...", "areas_for_improvement": "...", "ai_summary": "..." }',
-    );
-
-    // 2. Make the API call
-    try {
-      final response = await _model.generateContent([
-        Content.text(promptBuffer.toString()),
-      ]);
-
-      // Clean and parse the JSON response
-      String cleanJsonString = response.text?.trim() ?? '{}';
-      if (cleanJsonString.startsWith('```json')) {
-        cleanJsonString = cleanJsonString.replaceFirst('```json', '');
-      }
-      if (cleanJsonString.endsWith('```')) {
-        cleanJsonString = cleanJsonString.substring(
-          0,
-          cleanJsonString.length - 3,
-        );
-      }
-
-      return jsonDecode(cleanJsonString) as Map<String, dynamic>;
-    } catch (e) {
-      debugPrint('Error generating interview summary: $e');
-      rethrow;
-    }
   }
 
   /// Validate and enhance evaluation data

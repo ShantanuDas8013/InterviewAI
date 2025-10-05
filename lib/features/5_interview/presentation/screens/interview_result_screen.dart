@@ -71,13 +71,14 @@ class _InterviewResultScreenState extends State<InterviewResultScreen> {
         widget.interviewSessionId,
       );
 
-      // 2. Fetch job role title from the session
+      // 2. Fetch job role title and ID from the session
       final sessionData = await Supabase.instance.client
           .from('interview_sessions')
-          .select('job_role:job_roles(title)')
+          .select('job_role_id, job_role:job_roles(title)')
           .eq('id', widget.interviewSessionId)
           .single();
       final jobTitle = sessionData['job_role']['title'] as String;
+      final jobRoleId = sessionData['job_role_id'] as String;
 
       // 3. Get the summary from Gemini
       final summaryData = await _geminiService.getInterviewSummary(
@@ -89,6 +90,7 @@ class _InterviewResultScreenState extends State<InterviewResultScreen> {
       await Supabase.instance.client.from('interview_results').insert({
         'interview_session_id': widget.interviewSessionId,
         'user_id': Supabase.instance.client.auth.currentUser!.id,
+        'job_role_id': jobRoleId,
         'job_role_title': jobTitle,
         'overall_score': summaryData['overall_score'],
         'technical_score': summaryData['technical_score'],
@@ -144,10 +146,10 @@ class _InterviewResultScreenState extends State<InterviewResultScreen> {
   Future<List<QuestionResponseData>> _fetchQuestionResponses() async {
     try {
       final response = await Supabase.instance.client
-          .from('interview_responses')
+          .from('interview_answers')
           .select('''
             *,
-            interview_questions!inner(
+            question:interview_questions(
               question_text,
               question_type,
               difficulty_level,
@@ -155,71 +157,38 @@ class _InterviewResultScreenState extends State<InterviewResultScreen> {
               expected_answer_keywords
             )
           ''')
-          .eq('interview_session_id', widget.interviewSessionId)
-          .order('question_order');
+          .eq('session_id', widget.interviewSessionId)
+          .order('created_at');
 
       final List<QuestionResponseData> questionResponses = [];
+      int questionOrder = 1;
 
-      for (final responseData in response) {
-        final questionData = responseData['interview_questions'];
+      for (final answerData in response) {
+        final questionData = answerData['question'];
 
-        // Check for missing feedback and generate if needed
-        String? idealAnswerComparison = responseData['ideal_answer_comparison'];
-        String? suggestedImprovement = responseData['suggested_improvement'];
-        String? aiFeedback = responseData['ai_feedback'];
-
-        // Generate missing feedback using Gemini API
-        if (_shouldGenerateFallbackFeedback(
-          idealAnswerComparison,
-          suggestedImprovement,
-          aiFeedback,
-        )) {
-          final fallbackData = await _generateFallbackFeedback(
-            questionText: questionData['question_text'],
-            userAnswer: responseData['transcribed_text'] ?? '',
-            jobTitle: _interviewResult?['job_role_title'] ?? '',
-            questionType: questionData['question_type'],
-            expectedKeywords: List<String>.from(
-              questionData['expected_answer_keywords'] ?? [],
-            ),
-          );
-
-          idealAnswerComparison ??= fallbackData['ideal_answer_comparison'];
-          suggestedImprovement ??= fallbackData['suggested_improvement'];
-          aiFeedback ??= fallbackData['ai_feedback'];
-        }
-
+        // Since interview_answers doesn't have evaluation data yet,
+        // we'll use placeholder values for display
         questionResponses.add(
           QuestionResponseData(
-            questionId: responseData['question_id'],
+            questionId: answerData['question_id'],
             questionText: questionData['question_text'],
             questionType: questionData['question_type'],
             difficultyLevel: questionData['difficulty_level'],
-            userAnswer: responseData['transcribed_text'] ?? '',
-            audioFileUrl: responseData['audio_file_path'],
-            responseScore: (responseData['response_score'] ?? 0.0).toDouble(),
-            aiFeedback: aiFeedback ?? 'No feedback available',
+            userAnswer: answerData['answer_text'] ?? '',
+            audioFileUrl: null, // Not stored in interview_answers
+            responseScore: 0.0, // Will be calculated in summary
+            aiFeedback: 'Evaluated as part of the complete interview summary.',
             idealAnswerComparison:
-                idealAnswerComparison ??
-                questionData['sample_answer'] ??
-                'No ideal answer available',
+                questionData['sample_answer'] ?? 'No ideal answer available',
             suggestedImprovement:
-                suggestedImprovement ??
-                'Consider providing more detailed examples and explanations',
-            technicalAccuracy: (responseData['technical_accuracy'] ?? 0.0)
-                .toDouble(),
-            communicationClarity: (responseData['communication_clarity'] ?? 0.0)
-                .toDouble(),
-            relevanceScore: (responseData['relevance_score'] ?? 0.0).toDouble(),
-            keywordsMentioned: List<String>.from(
-              responseData['keywords_mentioned'] ?? [],
-            ),
-            missingKeywords: List<String>.from(
-              responseData['missing_keywords'] ?? [],
-            ),
-            confidenceLevel: (responseData['confidence_level'] ?? 0.0)
-                .toDouble(),
-            questionOrder: responseData['question_order'],
+                'See overall interview feedback for improvement suggestions',
+            technicalAccuracy: 0.0,
+            communicationClarity: 0.0,
+            relevanceScore: 0.0,
+            keywordsMentioned: [],
+            missingKeywords: [],
+            confidenceLevel: 0.0,
+            questionOrder: questionOrder++,
           ),
         );
       }
@@ -238,62 +207,6 @@ class _InterviewResultScreenState extends State<InterviewResultScreen> {
     } catch (e) {
       debugPrint('Error fetching job role: $e');
       return null;
-    }
-  }
-
-  /// Check if fallback feedback generation is needed
-  bool _shouldGenerateFallbackFeedback(
-    String? idealAnswer,
-    String? improvement,
-    String? feedback,
-  ) {
-    return (idealAnswer == null || idealAnswer.isEmpty) ||
-        (improvement == null || improvement.isEmpty) ||
-        (feedback == null || feedback.isEmpty);
-  }
-
-  /// Generate fallback feedback using Gemini API
-  Future<Map<String, String>> _generateFallbackFeedback({
-    required String questionText,
-    required String userAnswer,
-    required String jobTitle,
-    required String questionType,
-    required List<String> expectedKeywords,
-  }) async {
-    try {
-      // Use the existing evaluateInterviewAnswer method for consistency
-      final evaluationResult = await _geminiService.evaluateInterviewAnswer(
-        questionText: questionText,
-        questionType: questionType,
-        userAnswer: userAnswer,
-        expectedKeywords: expectedKeywords,
-        difficultyLevel: 'medium', // Default difficulty
-        jobTitle: jobTitle,
-      );
-
-      return {
-        'ideal_answer_comparison':
-            evaluationResult['ideal_answer_comparison']?.toString() ??
-            'The response addresses some key points but could be more comprehensive.',
-        'suggested_improvement':
-            evaluationResult['suggested_improvement']?.toString() ??
-            'Consider providing more specific examples and detailed explanations.',
-        'ai_feedback':
-            evaluationResult['ai_feedback']?.toString() ??
-            'Good effort on the response. Focus on being more specific and detailed.',
-      };
-    } catch (e) {
-      debugPrint('Error generating fallback feedback: $e');
-
-      // Return default fallback
-      return {
-        'ideal_answer_comparison':
-            'The response shows understanding but could benefit from more detail.',
-        'suggested_improvement':
-            'Practice providing more structured and comprehensive answers.',
-        'ai_feedback':
-            'Continue practicing to improve your interview responses.',
-      };
     }
   }
 

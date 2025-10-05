@@ -464,11 +464,21 @@ class _InterviewScreenState extends State<InterviewScreen>
       // Get an instance of InterviewRepository
       final interviewRepository = InterviewRepository();
 
-      // Save the transcribed answer to the database
+      // Save the transcribed answer to the interview_answers table
       await interviewRepository.saveAnswer(
         sessionId: _currentSession!.id,
         questionId: question.id,
         answerText: answer,
+      );
+
+      // Update session questions answered count
+      await _databaseService.updateQuestionsAnswered(
+        _currentSession!.id,
+        _currentQuestionIndex + 1,
+      );
+
+      debugPrint(
+        'Answer saved successfully for question ${_currentQuestionIndex + 1}',
       );
 
       setState(() {
@@ -519,14 +529,18 @@ class _InterviewScreenState extends State<InterviewScreen>
         'response_duration': 0,
       });
 
-      // Save empty response to database
-      await _databaseService.saveResponse(
+      // Save empty response to interview_answers table
+      final interviewRepository = InterviewRepository();
+      await interviewRepository.saveAnswer(
         sessionId: _currentSession!.id,
         questionId: question.id,
-        userId: _currentSession!.userId,
-        questionOrder: _currentQuestionIndex + 1,
-        userResponse: '[No response provided]',
-        score: 0.0,
+        answerText: '[No response provided]',
+      );
+
+      // Update questions answered count
+      await _databaseService.updateQuestionsAnswered(
+        _currentSession!.id,
+        _currentQuestionIndex + 1,
       );
     }
 
