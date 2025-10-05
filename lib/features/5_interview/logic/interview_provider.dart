@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../data/models/interview_question_model.dart';
-import '../data/models/interview_result_model.dart';
 import '../data/models/interview_session_model.dart';
 import '../data/models/job_role_model.dart';
 import '../services/assembly_ai_service.dart';
@@ -497,74 +496,13 @@ class InterviewProvider extends ChangeNotifier {
       'Thank you for completing the interview! I\'m now analyzing your responses and will provide detailed feedback shortly.',
     );
 
-    // Generate basic interview result
-    final result = _generateBasicResult();
-
-    // Save result to database
-    await _databaseService.saveInterviewResult(
-      sessionId: _currentSession!.id,
-      result: result,
-    );
-
-    // Update session status
+    // Update session status to completed
     await _databaseService.updateSessionStatus(
       _currentSession!.id,
       'completed',
     );
 
     _setState(InterviewState.completed);
-  }
-
-  // Generate basic interview result
-  InterviewResultModel _generateBasicResult() {
-    // Calculate basic scores based on responses
-    final overallScore = _userResponses.isNotEmpty ? 7.5 : 0.0;
-    final technicalScore = 7.0;
-    final communicationScore = 8.0;
-    final problemSolvingScore = 7.5;
-    final confidenceScore = 8.0;
-
-    // Create question-answer pairs
-    final questionAnswerPairs = _userResponses.map((response) {
-      final question = _questions.firstWhere(
-        (q) => q.id == response['question_id'],
-        orElse: () => _questions.first,
-      );
-
-      return QuestionAnswerPair(
-        questionId: response['question_id'],
-        questionText: response['question_text'],
-        userAnswer: response['user_answer'],
-        idealAnswer:
-            question.sampleAnswer ??
-            'A comprehensive answer addressing the key points of the question.',
-        feedback:
-            'Good response! Consider adding more specific examples and technical details.',
-        score: 7.5,
-      );
-    }).toList();
-
-    return InterviewResultModel(
-      id: const Uuid().v4(),
-      interviewSessionId: _currentSession!.id,
-      userId: _currentSession!.userId,
-      jobRoleId: _jobRole!.id,
-      jobRoleTitle: _jobRole!.title,
-      overallScore: overallScore,
-      technicalScore: technicalScore,
-      communicationScore: communicationScore,
-      problemSolvingScore: problemSolvingScore,
-      confidenceScore: confidenceScore,
-      strengthsAnalysis:
-          'Strong communication skills and good understanding of core concepts. Shows enthusiasm and willingness to learn.',
-      areasForImprovement:
-          'Consider providing more specific examples and demonstrating deeper technical knowledge in certain areas.',
-      aiSummary:
-          'The candidate demonstrated good overall performance with strong communication skills. There are opportunities for improvement in technical depth and providing more concrete examples.',
-      completedAt: DateTime.now(),
-      createdAt: DateTime.now(),
-      questionAnswerPairs: questionAnswerPairs,
-    );
   }
 
   // End interview early

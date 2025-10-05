@@ -3,14 +3,12 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../../core/constants/theme.dart';
 import '../../../../core/api/gemini_service.dart';
 import '../../data/models/job_role_model.dart';
 import '../../data/models/interview_session_model.dart';
 import '../../data/models/interview_question_model.dart';
-import '../../data/models/interview_result_model.dart';
 import '../../data/interview_repository.dart';
 import '../../services/assembly_ai_service.dart';
 import '../../services/audio_recording_service.dart';
@@ -574,19 +572,15 @@ class _InterviewScreenState extends State<InterviewScreen>
     setState(() => _isProcessing = true);
 
     try {
-      // For now, create a basic analysis since Gemini integration is complex
-      // In a real implementation, you would analyze each response with AI
-      final result = _createBasicAnalysis();
-
-      // Save result to database
-      await _databaseService.saveInterviewResult(
-        sessionId: _currentSession!.id,
-        result: result,
+      // Update session status to completed
+      await _databaseService.updateSessionStatus(
+        _currentSession!.id,
+        'completed',
       );
 
       setState(() => _isProcessing = false);
 
-      // Navigate to results screen using post-frame callback
+      // Navigate to results screen which will generate and save the AI analysis
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           Navigator.of(context).pushReplacement(
@@ -600,55 +594,8 @@ class _InterviewScreenState extends State<InterviewScreen>
       });
     } catch (e) {
       setState(() => _isProcessing = false);
-      _showErrorDialog('Failed to generate interview result: $e');
+      _showErrorDialog('Failed to complete interview: $e');
     }
-  }
-
-  InterviewResultModel _createBasicAnalysis() {
-    // Calculate basic scores based on responses
-    final overallScore = _userResponses.isNotEmpty ? 7.5 : 0.0;
-    final technicalScore = 7.0;
-    final communicationScore = 8.0;
-    final problemSolvingScore = 7.5;
-    final confidenceScore = 8.0;
-
-    // Create question-answer pairs
-    final questionAnswerPairs = _userResponses.map((response) {
-      return QuestionAnswerPair(
-        questionId: response['question_id'],
-        questionText: response['question_text'],
-        userAnswer: response['user_answer'],
-        idealAnswer:
-            'A comprehensive answer addressing the key points of the question.',
-        feedback:
-            'Good response! Consider adding more specific examples and technical details.',
-        score: 7.5,
-      );
-    }).toList();
-
-    // Use a proper UUID for the ID instead of a timestamp
-    // This will be replaced by the database-generated UUID when saved
-    return InterviewResultModel(
-      id: const Uuid().v4(),
-      interviewSessionId: _currentSession!.id,
-      userId: _currentSession!.userId,
-      jobRoleId: widget.jobRole.id,
-      jobRoleTitle: widget.jobRole.title,
-      overallScore: overallScore,
-      technicalScore: technicalScore,
-      communicationScore: communicationScore,
-      problemSolvingScore: problemSolvingScore,
-      confidenceScore: confidenceScore,
-      strengthsAnalysis:
-          'Strong communication skills and good understanding of core concepts. Shows enthusiasm and willingness to learn.',
-      areasForImprovement:
-          'Consider providing more specific examples and demonstrating deeper technical knowledge in certain areas.',
-      aiSummary:
-          'The candidate demonstrated good overall performance with strong communication skills. There are opportunities for improvement in technical depth and providing more concrete examples.',
-      completedAt: DateTime.now(),
-      createdAt: DateTime.now(),
-      questionAnswerPairs: questionAnswerPairs,
-    );
   }
 
   Future<void> _endInterview() async {

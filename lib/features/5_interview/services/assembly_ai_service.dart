@@ -215,6 +215,8 @@ class AssemblyAiService {
         'word_boost': wordBoostList,
 
         // Language setting
+        // IMPORTANT: Do NOT include 'language_detection': true when 'language_code' is specified
+        // AssemblyAI throws an error if both are present
         'language_code': 'en', // Optimize for English interviews
         // Advanced features for detailed analysis
         'auto_chapters': false, // Not needed for single questions

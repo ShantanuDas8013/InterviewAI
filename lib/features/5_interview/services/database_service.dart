@@ -267,6 +267,9 @@ class DatabaseService {
           .eq('id', sessionId);
 
       // Then save the result
+      // NOTE: If you get a 404 error here, it means the 'interview_results' table
+      // doesn't exist in your Supabase database. Run the database_fix.sql script
+      // in your Supabase SQL Editor to create the table.
       final response = await _supabase
           .from('interview_results')
           .insert({
@@ -289,6 +292,11 @@ class DatabaseService {
 
       return response['id'] as String;
     } catch (e) {
+      if (e.toString().contains('404')) {
+        debugPrint('❌ DATABASE ERROR: interview_results table not found!');
+        debugPrint('📝 SOLUTION: Run database_fix.sql in Supabase SQL Editor');
+        debugPrint('   File location: database_fix.sql in project root');
+      }
       debugPrint('Error saving interview result: $e');
       rethrow;
     }
