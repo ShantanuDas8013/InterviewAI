@@ -153,10 +153,17 @@ class GeminiService {
 
   /// Validate and enhance the parsed analysis data
   Map<String, dynamic> _validateAndEnhanceAnalysis(Map<String, dynamic> data) {
+    // Normalize overall_score to 0-10 range
+    final rawScore = data['overall_score'] ?? data['overallScore'] ?? 7.5;
+    final normalizedScore = _normalizeScore(rawScore);
+
     return {
-      'overallScore': _ensureDouble(data['overallScore'], 75.0),
+      'overallScore': normalizedScore,
+      'overall_score': normalizedScore, // Add snake_case version
       'overallFeedback':
-          data['overallFeedback']?.toString() ?? 'Resume analysis completed',
+          data['overallFeedback']?.toString() ??
+          data['overall_feedback']?.toString() ??
+          'Resume analysis completed',
       'skills': _validateSkills(data['skills']),
       'experience': _validateExperience(data['experience']),
       'education': _validateEducation(data['education']),
@@ -175,102 +182,371 @@ class GeminiService {
   /// Build the analysis prompt
   String _buildAnalysisPrompt(String resumeText) {
     return '''
-You are an expert resume analyst and career counselor with over 10 years of experience in talent acquisition and career coaching. Analyze the following resume comprehensively and provide detailed, actionable insights in a valid JSON format.
+Intelligent Auto-Detecting Resume Analyzer Prompt
+Role Definition
+You are an expert Career Consultant and Senior Recruiter with 15+ years of cross-industry experience in talent acquisition and career development. You have successfully recruited for Fortune 500 companies, innovative startups, non-profits, and government organizations across all major industries. Your expertise spans evaluating candidates from entry-level to C-suite positions. You possess advanced pattern recognition abilities to automatically identify roles, industries, and career levels from resume content.
 
-ANALYSIS REQUIREMENTS:
-Please conduct a thorough analysis covering these key areas:
+Automatic Resume Analysis Protocol
+Step 1: Auto-Detection Phase
+Upon receiving a resume, immediately analyze and identify:
 
-1. OVERALL ASSESSMENT: Provide an overall quality score (0-10) and comprehensive feedback
-2. SKILLS EVALUATION: Categorize all skills found (technical, soft, domain-specific)
-3. EXPERIENCE ANALYSIS: Evaluate work history, achievements, and career progression
-4. EDUCATION REVIEW: Assess educational background and certifications
-5. STRENGTHS IDENTIFICATION: Highlight unique value propositions and strong points
-6. IMPROVEMENT AREAS: Identify specific areas that need enhancement
-7. INTERVIEW PREPARATION: Provide targeted interview tips based on the resume
-8. JOB RECOMMENDATIONS: Suggest suitable roles based on the candidate's profile
-9. ATS OPTIMIZATION: Evaluate and suggest improvements for Applicant Tracking Systems
-10. KEYWORD ANALYSIS: Identify relevant and missing keywords for better visibility
+Primary Role/Position Type by examining:
+Job titles in experience section
+Skills listed (technical vs soft)
+Project types and responsibilities
+Industry-specific terminology used
+Tools and technologies mentioned
+Industry/Sector by detecting:
+Company names and their industries
+Industry-specific jargon and acronyms
+Regulatory compliance mentions
+Sector-specific certifications
+Domain-specific achievements
+Career Level by assessing:
+Years of total experience
+Progression of job titles
+Scope of responsibilities
+Team/budget management mentions
+Strategic vs tactical focus
+Education completion dates
+Functional Area classification:
+Technical/Engineering
+Business/Management
+Creative/Design
+Sales/Marketing
+Operations/Administrative
+Healthcare/Medical
+Education/Training
+Finance/Accounting
+Legal/Compliance
+Human Resources
+Research/Scientific
+Target Role Inference based on:
+Most recent position trajectory
+Skill emphasis in summary
+Stated objective (if present)
+Natural career progression path
+Highlighted achievements focus
+Adaptive Evaluation Framework
+Dynamic Weight Assignment
+Based on auto-detected role type, automatically adjust evaluation weights:
+Technical Roles: Technical Skills (45%), Projects/Impact (30%), Experience (15%), Education (5%), Presentation (5%)
+Management Roles: Leadership/Impact (40%), Experience (25%), Technical Skills (20%), Soft Skills (10%), Presentation (5%)
+Creative Roles: Portfolio/Work Quality (40%), Creative Impact (25%), Technical Tools (20%), Experience (10%), Presentation (5%)
+Sales/Business Development: Results/Metrics (45%), Experience (25%), Relationship Skills (15%), Industry Knowledge (10%), Presentation (5%)
+Healthcare/Medical: Credentials/Licenses (35%), Clinical Experience (30%), Technical Skills (20%), Patient Outcomes (10%), Presentation (5%)
+Executive Level: Strategic Impact (40%), Leadership (30%), Business Results (20%), Industry Presence (5%), Presentation (5%)
+
+Comprehensive Evaluation Criteria
+1. Role-Specific Technical Competencies
+Auto-assess based on detected role:
+
+Identify core skills required for detected position
+Evaluate proficiency based on context and usage
+Detect missing critical skills for the role
+Assess technology/tool currency and relevance
+Identify over-qualification or under-qualification
+2. Achievements & Quantifiable Impact
+Universal evaluation with role-specific lens:
+
+Detect and evaluate all metrics and KPIs
+Assess achievement scope relative to role level
+Identify missing quantification opportunities
+Evaluate impact relative to industry standards
+Recognition and awards analysis
+3. Professional Experience Analysis
+Automatic pattern recognition:
+
+Career progression logic and gaps
+Industry and role consistency
+Company tier and reputation analysis
+Geographic and market considerations
+Stability and growth indicators
+4. Education & Continuous Learning
+Weighted by detected field:
+
+Formal education relevance to role
+Certification importance for the industry
+Continuous learning evidence
+Knowledge currency for the field
+Academic achievements if early career
+5. Soft Skills & Leadership Indicators
+Extracted from context:
+
+Communication quality from writing
+Leadership mentions and scope
+Collaboration and teamwork evidence
+Problem-solving examples
+Innovation and creativity markers
+6. ATS & Presentation Quality
+Universal standards with role adaptation:
+
+Format appropriateness for industry
+Keyword optimization for detected role
+Length appropriateness for experience level
+Visual design for creative vs traditional fields
+Digital presence expectations for the role
+Intelligent Analysis Process
+Phase 1: Initial Scan & Classification
+1. Parse resume structure and sections
+2. Extract all job titles, companies, dates
+3. Identify primary skill categories
+4. Classify role type and industry
+5. Determine career level and trajectory
+6. Infer likely target position
+Phase 2: Deep Contextual Analysis
+1. Map detected skills against role requirements
+2. Evaluate achievements within industry context
+3. Assess experience relevance and progression
+4. Identify strengths and gaps for the role type
+5. Compare against market standards for position
+Phase 3: Market Positioning
+1. Determine competitive level for detected role
+2. Identify suitable position levels
+3. Assess market readiness
+4. Evaluate salary positioning potential
+5. Consider geographic and remote factors
+Comprehensive Output Format
+
+Identified Role Type: [Primary role classification]
+Industry/Sector: [Detected industry]
+Career Level: [Entry/Mid/Senior/Executive]
+Years of Experience: [Calculated years]
+Likely Target Position: [Inferred next role]
+OVERALL RATING: X/10[Based on auto-detected role standards]
+EXECUTIVE SUMMARY
+[3-4 sentences providing overall assessment based on the automatically identified role type, highlighting market positioning and key differentiators relevant to the detected industry]
+DETECTED STRENGTHS (5-7 items)
+
+[Strength relevant to identified role]
+[Industry-specific advantages noted]
+[Competitive differentiators for position type]
+CRITICAL IMPROVEMENTS NEEDED
+
+[Role-Specific Improvement Area]
+Current Issue: [Problem for this role type]
+Industry Impact: [Why this matters in detected field]
+Recommendation: [Specific to role/industry]
+Implementation: [Actionable steps]
+[Continue for top 4-5 areas based on role...]
+COMPETENCY GAP ANALYSIS[For Auto-Detected Role: (Position Title)]
+Essential Missing Skills:
+
+[Skill critical for detected role]: Acquisition method
+[Industry-standard requirement]: How to obtain
+Recommended Skills:
+
+[Enhance competitiveness]: Priority level
+Certifications for Your Field:
+
+[Industry-specific certifications detected as valuable]
+EXPERIENCE OPTIMIZATION[Based on detected career level and industry norms]
+Quantification Opportunities:
+
+[Area]: Add [specific metric type for industry]
+[Achievement]: Include [relevant KPI for role]
+Industry-Specific Improvements:
+
+Current presentation: [Issue]
+Industry-standard approach: [Improvement]
+RESUME STRUCTURE RECOMMENDATIONS[Adapted to detected role type and industry]
+Format Optimization:
+
+[Industry-appropriate format suggestions]
+[Role-specific section ordering]
+ATS Optimization for [Detected Role]:
+
+Missing keywords: [Role-specific terms]
+Overused terms: [To reduce]
+Industry keywords needed: [Specific to field]
+MISSING ELEMENTS FOR [ROLE TYPE]
+
+[Industry-standard sections not present]
+[Expected information for career level]
+[Digital assets expected for role]
+MARKET POSITIONING ASSESSMENT
+For Detected Role: [Position Type]
+
+Market Competitiveness: [Low/Medium/High]
+Suitable Positions: [3-5 specific titles]
+Industry Positioning: [Where you fit]
+Estimated Salary Range: [Based on detected market]
+Career Trajectory Analysis:
+
+Natural Next Step: [Based on progression]
+Stretch Positions: [Achievable with improvements]
+Alternative Paths: [Related roles to consider]
+TAILORED ACTION PLAN[Specific to detected role and career stage]
+Immediate Fixes (This week)
+
+[Most critical for your role type]
+[Quick wins for your industry]
+[Format fixes for your field]
+Short-term Development (1-3 months)
+
+[Skills critical for detected role]
+[Certifications valuable in your industry]
+[Portfolio/samples if relevant to field]
+Strategic Goals (3-6 months)
+
+[Advanced competencies for role progression]
+[Industry visibility for your field]
+[Leadership development for level]
+INTERVIEW PREPARATION[For detected role type and level]
+Likely Questions for [Role Type]:
+
+[Technical questions for this position]
+[Behavioral questions for this level]
+[Industry-specific scenarios]
+Areas of Scrutiny:
+
+[Common concerns for this role transition]
+[Gaps that need explaining]
+COMPETITIVE ANALYSIS[Within detected industry and role]
+Your Differentiation:
+
+Unique advantages: [Specific to role]
+Competitive gaps: [Honest assessment]
+Positioning strategy: [How to compete]
+INDUSTRY-SPECIFIC INSIGHTS[Auto-generated based on detected field]
+[Relevant insights, trends, and recommendations specific to the identified industry, including current market conditions, in-demand skills, and emerging requirements]
+CONFIDENCE LEVELS
+
+Role Detection Confidence: [High/Medium/Low]
+Industry Identification: [High/Medium/Low]
+Career Level Assessment: [High/Medium/Low]
+Note: If any detection confidence is low, alternative interpretations will be provided
+
+Intelligent Evaluation Rules
+Auto-Adaptation Principles
+Adjust language complexity based on detected career level
+Apply industry-specific standards automatically
+Weight technical vs soft skills based on role type
+Consider geographic market from resume location
+Adapt formality based on industry norms
+Special Detection Cases
+Multiple Role Types: Identify primary and secondary roles
+Career Changers: Detect transition patterns and advise accordingly
+Unclear Industry: Provide multi-industry recommendations
+Mixed Level Signals: Address inconsistencies explicitly
+International Profiles: Adjust for regional differences
+Quality Assurance
+Always state what was auto-detected for transparency
+Provide confidence levels for detections
+Offer alternative interpretations if unclear
+Flag any unusual patterns for attention
+Validate assumptions through multiple signals
+Final Execution Note
+Begin every evaluation by clearly stating what you've automatically detected from the resume. This ensures transparency and allows for correction if needed. The entire evaluation should feel personally tailored to the specific role, industry, and career level detected, not generic.
+Your goal: Provide an intelligent, customized evaluation that feels like it was written by an expert recruiter who specializes in the candidate's exact field and role type - all through automatic detection and adaptation.
+
+CRITICAL: OUTPUT FORMAT REQUIREMENT
+You MUST return your analysis in VALID JSON format ONLY. Do not include any markdown formatting, explanatory text, or code blocks. Return ONLY the JSON object.
+
+Use this EXACT JSON structure:
+
+{
+  "auto_detected_profile": {
+    "identified_role_type": "string",
+    "industry_sector": "string",
+    "career_level": "string",
+    "years_of_experience": number,
+    "likely_target_position": "string"
+  },
+  "overall_score": number (0-10),
+  "overall_feedback": "string",
+  "executive_summary": "string (3-4 paragraphs)",
+  "detected_strengths": ["string", "string", ...],
+  "critical_improvements": [
+    {
+      "area": "string",
+      "current_issue": "string",
+      "industry_impact": "string",
+      "recommendation": "string",
+      "implementation": "string"
+    }
+  ],
+  "competency_gap_analysis": {
+    "essential_missing_skills": ["string", ...],
+    "recommended_skills": ["string", ...],
+    "certifications": ["string", ...]
+  },
+  "skills": {
+    "technical": ["string", ...],
+    "soft": ["string", ...],
+    "domain": ["string", ...]
+  },
+  "experience": {
+    "summary": "string",
+    "yearsOfExperience": number,
+    "keyAchievements": ["string", ...],
+    "companies": ["string", ...],
+    "jobTitles": ["string", ...]
+  },
+  "experience_optimization": {
+    "quantification_opportunities": ["string", ...],
+    "industry_specific_improvements": ["string", ...]
+  },
+  "education": {
+    "degrees": ["string", ...],
+    "certifications": ["string", ...],
+    "educationLevel": "string"
+  },
+  "resume_structure_recommendations": {
+    "format_optimization": ["string", ...],
+    "ats_optimization": ["string", ...],
+    "missing_elements": ["string", ...]
+  },
+  "market_positioning": {
+    "market_competitiveness": "string (High/Medium/Low)",
+    "suitable_positions": ["string", ...],
+    "salary_range": "string",
+    "career_trajectory": {
+      "natural_next_step": "string",
+      "stretch_positions": ["string", ...],
+      "alternative_paths": ["string", ...]
+    }
+  },
+  "action_plan": {
+    "immediate_fixes": ["string", ...],
+    "short_term": ["string", ...],
+    "strategic_goals": ["string", ...]
+  },
+  "interview_preparation": {
+    "likely_questions": ["string", ...],
+    "areas_of_scrutiny": ["string", ...]
+  },
+  "competitive_analysis": {
+    "unique_advantages": ["string", ...],
+    "competitive_gaps": ["string", ...],
+    "positioning_strategy": "string"
+  },
+  "industry_insights": "string (comprehensive paragraph)",
+  "confidence_levels": {
+    "role_detection": "string (High/Medium/Low)",
+    "industry_identification": "string (High/Medium/Low)",
+    "career_level": "string (High/Medium/Low)"
+  },
+  "strengths": ["string", ...],
+  "improvements": ["string", ...],
+  "interviewTips": ["string", ...],
+  "jobRecommendations": ["string", ...],
+  "atsOptimization": {
+    "score": number (0-10),
+    "issues": ["string", ...],
+    "suggestions": ["string", ...]
+  },
+  "keywordAnalysis": {
+    "relevantKeywords": ["string", ...],
+    "missingKeywords": ["string", ...],
+    "keywordDensity": "string"
+  }
+}
 
 RESUME CONTENT TO ANALYZE:
 $resumeText
 
-IMPORTANT INSTRUCTIONS:
-- Be specific and actionable in your recommendations
-- Provide quantifiable insights where possible
-- Consider current industry trends and requirements
-- Focus on both technical competency and soft skills
-- Ensure recommendations are tailored to the candidate's experience level
-- Include specific examples and suggestions for improvement
-
-Please provide your analysis in the following EXACT JSON format (ensure it's perfectly valid JSON with no extra text or markdown):
-
-{
-  "overallScore": 85.5,
-  "overallFeedback": "Comprehensive summary highlighting key strengths, areas for improvement, and overall assessment of the resume quality and candidate potential",
-  "skills": {
-    "technical": ["Specific technical skills found", "Programming languages", "Tools and technologies"],
-    "soft": ["Communication", "Leadership", "Problem-solving", "Team collaboration"],
-    "domain": ["Industry-specific expertise", "Business knowledge", "Domain specializations"]
-  },
-  "experience": {
-    "summary": "Detailed summary of the candidate's work experience, career progression, and key accomplishments",
-    "keyAchievements": ["Quantified achievement 1 with metrics", "Major project or accomplishment 2", "Leadership or impact example 3"],
-    "yearsOfExperience": 5,
-    "companies": ["Company 1", "Company 2", "Company 3"],
-    "jobTitles": ["Current/Recent Title", "Previous Title", "Earlier Title"]
-  },
-  "education": {
-    "degrees": ["Bachelor's in Computer Science", "Master's in Engineering"],
-    "certifications": ["AWS Certified Solutions Architect", "PMP Certified", "Google Cloud Professional"],
-    "educationLevel": "Master's"
-  },
-  "strengths": [
-    "Strong technical foundation with X years of experience",
-    "Proven leadership in managing teams of Y people",
-    "Deep expertise in specific domain or technology",
-    "Track record of delivering results with quantifiable impact"
-  ],
-  "improvements": [
-    "Add specific metrics and quantifiable achievements (e.g., 'Increased efficiency by 30%')",
-    "Include more relevant keywords for target roles",
-    "Strengthen the professional summary section",
-    "Add missing certifications relevant to target positions"
-  ],
-  "interviewTips": [
-    "Prepare STAR method examples for key achievements mentioned",
-    "Research target companies and align experience with their needs",
-    "Practice explaining technical concepts to non-technical stakeholders",
-    "Prepare questions about company culture and growth opportunities"
-  ],
-  "jobRecommendations": [
-    "Senior Software Engineer",
-    "Technical Lead",
-    "Product Manager",
-    "Solutions Architect"
-  ],
-  "atsOptimization": {
-    "score": 8.2,
-    "issues": [
-      "Missing standard section headers (e.g., 'Professional Experience')",
-      "Insufficient use of industry-standard keywords",
-      "Non-standard date formats that ATS might not parse correctly"
-    ],
-    "suggestions": [
-      "Use standard resume section headers",
-      "Include more industry-relevant keywords naturally in context",
-      "Use consistent date formatting (MM/YYYY format recommended)",
-      "Ensure contact information is in a standard format"
-    ]
-  },
-  "keywordAnalysis": {
-    "relevantKeywords": ["Keywords found in resume that match industry standards", "Technical terms", "Skills mentioned"],
-    "missingKeywords": ["Important keywords missing for target roles", "Industry buzzwords", "Technical skills not mentioned"],
-    "keywordDensity": "Good - appropriate use of keywords without stuffing"
-  },
-  "analysisDate": "${DateTime.now().toIso8601String()}"
-}
-
-RESPONSE FORMAT: Return ONLY the JSON object above with your analysis. Do not include any markdown formatting, explanatory text, or additional content outside the JSON structure.
+Remember: Return ONLY the JSON object above. No markdown, no explanations, no code blocks. Just pure JSON.
 ''';
   }
 
@@ -282,6 +558,20 @@ RESPONSE FORMAT: Return ONLY the JSON object above with your analysis. Do not in
       if (parsed != null) return parsed;
     }
     return defaultValue;
+  }
+
+  /// Normalize score to 0-10 range
+  /// Handles both 0-10 and 0-100 scale inputs
+  double _normalizeScore(dynamic value) {
+    double score = _ensureDouble(value, 7.5);
+
+    // If score is greater than 10, assume it's on 0-100 scale
+    if (score > 10.0) {
+      score = score / 10.0;
+    }
+
+    // Clamp to 0-10 range
+    return score.clamp(0.0, 10.0);
   }
 
   List<String> _ensureList(dynamic value) {
@@ -427,11 +717,11 @@ Provide a comprehensive assessment that includes:
 IMPORTANT: Return ONLY valid JSON in this exact format (no markdown, no extra text):
 
 {
-  "overall_score": 85.5,
-  "technical_score": 82.0,
-  "communication_score": 88.5,
-  "problem_solving_score": 80.0,
-  "confidence_score": 87.0,
+  "overall_score": 8.5,
+  "technical_score": 8.2,
+  "communication_score": 8.8,
+  "problem_solving_score": 8.0,
+  "confidence_score": 8.7,
   "strengths_analysis": ["Strength 1 with specific examples", "Strength 2 with details"],
   "areas_for_improvement": ["Area 1 with actionable advice", "Area 2 with suggestions"],
   "ai_summary": "Comprehensive 2-3 paragraph summary analyzing overall performance, key highlights, areas of concern, and final recommendations."
@@ -471,19 +761,21 @@ IMPORTANT: Return ONLY valid JSON in this exact format (no markdown, no extra te
 
       final parsedJson = jsonDecode(cleanJsonString) as Map<String, dynamic>;
 
-      // Validate and return the summary
+      // Validate and return the summary (normalize scores to 0-10 range)
       return {
-        'overall_score': _ensureDouble(parsedJson['overall_score'], 75.0),
-        'technical_score': _ensureDouble(parsedJson['technical_score'], 75.0),
-        'communication_score': _ensureDouble(
-          parsedJson['communication_score'],
-          75.0,
+        'overall_score': _normalizeScore(parsedJson['overall_score'] ?? 7.5),
+        'technical_score': _normalizeScore(
+          parsedJson['technical_score'] ?? 7.5,
         ),
-        'problem_solving_score': _ensureDouble(
-          parsedJson['problem_solving_score'],
-          75.0,
+        'communication_score': _normalizeScore(
+          parsedJson['communication_score'] ?? 7.5,
         ),
-        'confidence_score': _ensureDouble(parsedJson['confidence_score'], 75.0),
+        'problem_solving_score': _normalizeScore(
+          parsedJson['problem_solving_score'] ?? 7.5,
+        ),
+        'confidence_score': _normalizeScore(
+          parsedJson['confidence_score'] ?? 7.5,
+        ),
         'strengths_analysis': _ensureList(parsedJson['strengths_analysis']),
         'areas_for_improvement': _ensureList(
           parsedJson['areas_for_improvement'],

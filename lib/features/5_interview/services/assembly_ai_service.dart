@@ -196,9 +196,7 @@ class AssemblyAiService {
         'entity_detection':
             true, // Detect technical terms, companies, technologies
         'iab_categories': true, // Categorize content for topic analysis
-        'content_safety_labels': {
-          'confidence_threshold': 0.6,
-        }, // Content safety detection with confidence
+        'content_safety_labels': true, // Content safety detection
         // Interview-specific optimizations
         'redact_pii':
             true, // Protect personal information while preserving context
@@ -222,7 +220,8 @@ class AssemblyAiService {
         'auto_chapters': false, // Not needed for single questions
         'summarization': false, // We'll handle summarization with Gemini
       });
-
+      // TEMPORARY DEBUG - Remove after testing
+      debugPrint('🔍 AssemblyAI Request: $requestBody');
       final response = await http.post(
         Uri.parse(_transcriptUrl),
         headers: {'Authorization': _apiKey, 'Content-Type': 'application/json'},

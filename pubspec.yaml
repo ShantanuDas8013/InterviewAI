@@ -53,13 +53,37 @@ dependencies:
   uuid: ^4.5.1
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.6
   flutter_test:
     sdk: flutter
-  flutter_launcher_icons: ^0.14.4
 flutter_launcher_icons: # Add this entire block
   android: true
   ios: true
   image_path: "logo/app_logo.png" # Path to your logo image (adjust if in a subfolder)
+  adaptive_icon_foreground: "logo/foreground_logo.png" # Path to your logo image (adjust if in a subfolder)
+  adaptive_icon_background: "#ffffff" # Path to your logo image (adjust if in a subfolder)
+
+flutter_native_splash:
+  color: "#0D1B2A"
+  image: "logo/Splash_image.png"
+  android: true
+  ios: true
+  web: false
+  android_gravity: center
+  ios_content_mode: scaleAspectFit
+  fullscreen: true
+
+  # Android 12+ configuration
+  # Important: Android 12+ uses a different splash screen API
+  # The image will be displayed as a centered icon with background
+  android_12:
+    image: "logo/Splash_image.png"
+    color: "#0D1B2A"
+    icon_background_color: "#0D1B2A"
+    # For dark mode
+    image_dark: "logo/Splash_image.png"
+    icon_background_color_dark: "#0D1B2A"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
