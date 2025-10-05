@@ -1062,6 +1062,54 @@ Provide a thorough, fair, and constructive evaluation that leverages the enhance
 ''';
   }
 
+  /// Generates a comprehensive summary and evaluation of a full interview transcript
+  Future<Map<String, dynamic>> getInterviewSummary({
+    required List<Map<String, dynamic>> transcript,
+    required String jobTitle,
+  }) async {
+    await initialize();
+
+    // 1. Construct the prompt
+    final promptBuffer = StringBuffer(
+      'You are an expert technical recruiter and interview analyst. Based on the following interview transcript, please provide a detailed, holistic summary of the candidate\'s performance. Evaluate their strengths, weaknesses, and overall suitability for the role of a $jobTitle.\n\n',
+    );
+
+    for (final item in transcript) {
+      final question = item['question']['question_text'];
+      final answer = item['answer_text'];
+      promptBuffer.writeln('Question: $question');
+      promptBuffer.writeln('Candidate\'s Answer: $answer\n');
+    }
+
+    promptBuffer.writeln(
+      'Please provide your analysis in a valid JSON format with the following structure: { "overall_score": 8.5, "technical_score": 8.0, "communication_score": 9.0, "problem_solving_score": 8.0, "confidence_score": 9.0, "strengths_analysis": "...", "areas_for_improvement": "...", "ai_summary": "..." }',
+    );
+
+    // 2. Make the API call
+    try {
+      final response = await _model.generateContent([
+        Content.text(promptBuffer.toString()),
+      ]);
+
+      // Clean and parse the JSON response
+      String cleanJsonString = response.text?.trim() ?? '{}';
+      if (cleanJsonString.startsWith('```json')) {
+        cleanJsonString = cleanJsonString.replaceFirst('```json', '');
+      }
+      if (cleanJsonString.endsWith('```')) {
+        cleanJsonString = cleanJsonString.substring(
+          0,
+          cleanJsonString.length - 3,
+        );
+      }
+
+      return jsonDecode(cleanJsonString) as Map<String, dynamic>;
+    } catch (e) {
+      debugPrint('Error generating interview summary: $e');
+      rethrow;
+    }
+  }
+
   /// Validate and enhance evaluation data
   Map<String, dynamic> _validateEvaluationData(Map<String, dynamic> data) {
     return {

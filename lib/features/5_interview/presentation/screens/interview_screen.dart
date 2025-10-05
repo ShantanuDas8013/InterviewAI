@@ -11,6 +11,7 @@ import '../../data/models/job_role_model.dart';
 import '../../data/models/interview_session_model.dart';
 import '../../data/models/interview_question_model.dart';
 import '../../data/models/interview_result_model.dart';
+import '../../data/interview_repository.dart';
 import '../../services/assembly_ai_service.dart';
 import '../../services/audio_recording_service.dart';
 import '../../services/text_to_speech_service.dart';
@@ -460,24 +461,14 @@ class _InterviewScreenState extends State<InterviewScreen>
     try {
       final question = _questions[_currentQuestionIndex];
 
-      // Store user response
-      _userResponses.add({
-        'question_id': question.id,
-        'question_text': question.questionText,
-        'question_type': question.questionType,
-        'user_answer': answer,
-        'question_order': _currentQuestionIndex + 1,
-        'response_duration': _listeningTimer?.tick ?? 0,
-      });
+      // Get an instance of InterviewRepository
+      final interviewRepository = InterviewRepository();
 
-      // Save response to database
-      await _databaseService.saveResponse(
+      // Save the transcribed answer to the database
+      await interviewRepository.saveAnswer(
         sessionId: _currentSession!.id,
         questionId: question.id,
-        userId: _currentSession!.userId,
-        questionOrder: _currentQuestionIndex + 1,
-        userResponse: answer,
-        score: 0.0, // Will be calculated later
+        answerText: answer,
       );
 
       setState(() {
@@ -485,12 +476,12 @@ class _InterviewScreenState extends State<InterviewScreen>
         _isProcessing = false;
       });
 
-      // Ask next question or complete interview
+      // Ask the next question
       await Future.delayed(const Duration(milliseconds: 500));
       await _askNextQuestion();
     } catch (e) {
       setState(() => _isProcessing = false);
-      _showErrorDialog('Failed to process answer: $e');
+      _showErrorDialog('Failed to save your answer: $e');
     }
   }
 
@@ -549,11 +540,20 @@ class _InterviewScreenState extends State<InterviewScreen>
     _interviewTimer?.cancel();
 
     await _speakText(
-      'Thank you for completing the interview! I\'m now analyzing your responses and will provide detailed feedback shortly.',
+      'Thank you for completing the interview! I am now preparing your detailed feedback.',
     );
 
-    // Generate interview result
-    await _generateInterviewResult();
+    // Navigate to the results screen, which will handle the final evaluation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) =>
+                InterviewResultScreen(interviewSessionId: _currentSession!.id),
+          ),
+        );
+      }
+    });
   }
 
   Future<void> _generateInterviewResult() async {

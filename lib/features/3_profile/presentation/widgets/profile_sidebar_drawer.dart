@@ -499,7 +499,6 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
       decoration: BoxDecoration(
         color: Colors.red.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.red.withValues(alpha: 0.3), width: 1),
       ),
       child: _buildMenuItem(
         icon: Icons.logout,

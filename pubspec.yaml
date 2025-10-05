@@ -55,6 +55,11 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.4
+flutter_launcher_icons: # Add this entire block
+  android: true
+  ios: true
+  image_path: "logo/app_logo.png" # Path to your logo image (adjust if in a subfolder)
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

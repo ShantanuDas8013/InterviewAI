@@ -196,9 +196,8 @@ class AssemblyAiService {
         'entity_detection':
             true, // Detect technical terms, companies, technologies
         'iab_categories': true, // Categorize content for topic analysis
-        'content_safety_labels': {
-          'confidence_threshold': 0.6,
-        }, // Detect inappropriate content
+        'content_safety': true, // Enable content safety detection
+        'content_safety_confidence': 60, // Confidence threshold (0-100)
         // Interview-specific optimizations
         'redact_pii':
             true, // Protect personal information while preserving context

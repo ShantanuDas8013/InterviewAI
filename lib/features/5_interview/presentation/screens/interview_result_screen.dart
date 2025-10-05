@@ -4,6 +4,7 @@ import 'package:percent_indicator/percent_indicator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:ai_voice_interview_app/core/api/gemini_service.dart';
+import 'package:ai_voice_interview_app/features/5_interview/data/interview_repository.dart';
 import 'package:ai_voice_interview_app/features/5_interview/data/models/job_role_model.dart';
 import 'package:ai_voice_interview_app/features/5_interview/services/database_service.dart';
 
@@ -62,20 +63,51 @@ class _InterviewResultScreenState extends State<InterviewResultScreen> {
         _error = null;
       });
 
-      // Fetch interview result data first
+      // Get an instance of the repository
+      final interviewRepository = InterviewRepository();
+
+      // 1. Fetch the full interview transcript
+      final transcript = await interviewRepository.getInterviewTranscript(
+        widget.interviewSessionId,
+      );
+
+      // 2. Fetch job role title from the session
+      final sessionData = await Supabase.instance.client
+          .from('interview_sessions')
+          .select('job_role:job_roles(title)')
+          .eq('id', widget.interviewSessionId)
+          .single();
+      final jobTitle = sessionData['job_role']['title'] as String;
+
+      // 3. Get the summary from Gemini
+      final summaryData = await _geminiService.getInterviewSummary(
+        transcript: transcript,
+        jobTitle: jobTitle,
+      );
+
+      // 4. Save the summary to the interview_results table
+      await Supabase.instance.client.from('interview_results').insert({
+        'interview_session_id': widget.interviewSessionId,
+        'user_id': Supabase.instance.client.auth.currentUser!.id,
+        'job_role_title': jobTitle,
+        'overall_score': summaryData['overall_score'],
+        'technical_score': summaryData['technical_score'],
+        'communication_score': summaryData['communication_score'],
+        'problem_solving_score': summaryData['problem_solving_score'],
+        'confidence_score': summaryData['confidence_score'],
+        'strengths_analysis': summaryData['strengths_analysis'],
+        'areas_for_improvement': summaryData['areas_for_improvement'],
+        'ai_summary': summaryData['ai_summary'],
+      });
+
+      // 5. Fetch the final result to display
       final resultData = await _fetchInterviewResult();
-      if (resultData == null) {
-        throw Exception('Interview result not found');
-      }
 
-      // Store the result data temporarily for use in question responses
-      _interviewResult = resultData;
-
-      // Fetch question responses with detailed information
+      // 6. Fetch question responses and job role details for UI display
       final responseData = await _fetchQuestionResponses();
-
-      // Fetch job role details
-      final jobRoleData = await _fetchJobRoleDetails(resultData['job_role_id']);
+      final jobRoleData = await _fetchJobRoleDetails(
+        resultData!['job_role_id'],
+      );
 
       setState(() {
         _interviewResult = resultData;

@@ -72,4 +72,39 @@ class InterviewRepository {
       rethrow;
     }
   }
+
+  /// Save a single interview answer to the database
+  Future<void> saveAnswer({
+    required String sessionId,
+    required String questionId,
+    required String answerText,
+  }) async {
+    try {
+      await _supabase.from('interview_answers').insert({
+        'session_id': sessionId,
+        'question_id': questionId,
+        'answer_text': answerText,
+      });
+    } catch (e) {
+      debugPrint('Error saving answer: $e');
+      rethrow;
+    }
+  }
+
+  /// Get the full transcript of an interview session
+  Future<List<Map<String, dynamic>>> getInterviewTranscript(
+    String sessionId,
+  ) async {
+    try {
+      final response = await _supabase
+          .from('interview_answers')
+          .select('*, question:interview_questions(question_text)')
+          .eq('session_id', sessionId);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('Error fetching interview transcript: $e');
+      rethrow;
+    }
+  }
 }
