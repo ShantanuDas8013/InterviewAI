@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/theme.dart';
+import '../../../1_auth/presentation/screens/welcome_screen.dart';
 
 class ProfileSidebarDrawer extends StatefulWidget {
   final String? userName;
@@ -43,19 +44,72 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
     super.dispose();
   }
 
-  Future<void> _signOut() async {
+  Future<void> _signOut(BuildContext navigationContext) async {
     try {
+      debugPrint('🔴 SIGN OUT: Starting sign out process...');
+
+      // Sign out from Supabase first
       await _supabase.auth.signOut();
-      if (mounted) {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/welcome',
-          (route) => false,
-        );
+      debugPrint('🔴 SIGN OUT: Signed out from Supabase successfully');
+
+      // Navigate to welcome screen, clearing all previous routes
+      debugPrint('🔴 SIGN OUT: Context mounted: ${navigationContext.mounted}');
+
+      if (navigationContext.mounted) {
+        debugPrint('🔴 SIGN OUT: Attempting navigation to /welcome...');
+
+        // Use a post-frame callback to ensure the drawer is fully closed
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          debugPrint('🔴 SIGN OUT: Post-frame callback executing...');
+
+          if (navigationContext.mounted) {
+            debugPrint('🔴 SIGN OUT: Context still mounted, navigating now...');
+
+            try {
+              Navigator.of(
+                navigationContext,
+                rootNavigator: true,
+              ).pushNamedAndRemoveUntil('/welcome', (route) {
+                debugPrint(
+                  '🔴 SIGN OUT: Clearing route: ${route.settings.name}',
+                );
+                return false;
+              });
+              debugPrint(
+                '🔴 SIGN OUT: Navigation command executed successfully',
+              );
+            } catch (navError) {
+              debugPrint('🔴 SIGN OUT: Navigation error: $navError');
+              // If named route fails, try direct navigation
+              if (navigationContext.mounted) {
+                debugPrint(
+                  '🔴 SIGN OUT: Trying direct navigation with MaterialPageRoute...',
+                );
+                Navigator.of(
+                  navigationContext,
+                  rootNavigator: true,
+                ).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (context) => const WelcomeScreen(),
+                  ),
+                  (route) => false,
+                );
+                debugPrint('🔴 SIGN OUT: Direct navigation executed');
+              }
+            }
+          } else {
+            debugPrint(
+              '🔴 SIGN OUT: ERROR - Context not mounted in post-frame callback',
+            );
+          }
+        });
+      } else {
+        debugPrint('🔴 SIGN OUT: ERROR - Context not mounted after sign out');
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      debugPrint('🔴 SIGN OUT: Error during sign out: $e');
+      if (navigationContext.mounted) {
+        ScaffoldMessenger.of(navigationContext).showSnackBar(
           SnackBar(
             content: Text('Error signing out: $e'),
             backgroundColor: Colors.red,
@@ -509,7 +563,7 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
         showBorder: false,
         horizontalPadding: 12.0, // Reduced padding to shift content left
         onTap: () {
-          Navigator.pop(context);
+          // Show confirmation dialog without closing drawer first
           _showLogoutConfirmation();
         },
       ),
@@ -517,9 +571,13 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
   }
 
   void _showLogoutConfirmation() {
+    debugPrint('🔵 DIALOG: Showing logout confirmation dialog');
+    // Save the widget context before showing dialog
+    final savedContext = context;
+
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1A1A2E),
           shape: RoundedRectangleBorder(
@@ -535,7 +593,10 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                debugPrint('🔵 DIALOG: Cancel button pressed');
+                Navigator.pop(dialogContext);
+              },
               child: Text(
                 'Cancel',
                 style: TextStyle(color: Colors.grey.shade400),
@@ -543,8 +604,19 @@ class _ProfileSidebarDrawerState extends State<ProfileSidebarDrawer>
             ),
             TextButton(
               onPressed: () {
-                Navigator.pop(context);
-                _signOut();
+                debugPrint('🔵 DIALOG: Sign Out button pressed');
+
+                // Close dialog
+                Navigator.pop(dialogContext);
+                debugPrint('🔵 DIALOG: Dialog closed');
+
+                // Close the drawer using saved context
+                Navigator.of(savedContext).pop();
+                debugPrint('🔵 DIALOG: Drawer closed');
+
+                // Sign out immediately (no async delays)
+                debugPrint('🔵 DIALOG: Calling _signOut with savedContext');
+                _signOut(savedContext);
               },
               child: const Text(
                 'Sign Out',
